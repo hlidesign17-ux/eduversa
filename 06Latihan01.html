@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edufalah - Latihan 01</title>
+
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/latihan.css" />
+  </head>
+  <body>
+    <main class="latihan-container">
+      <!-- Header & Timer Bar -->
+      <header class="latihan-header">
+        <div>
+          <h1 class="latihan-title">Latihan 01</h1>
+          <p id="total-questions-text" class="latihan-subtitle">
+            Memuat soal...
+          </p>
+        </div>
+        <div class="timer-box">
+          <span>Sisa Waktu:</span>
+          <strong id="timer-display">15:00</strong>
+        </div>
+      </header>
+
+      <!-- Form Container Soal -->
+      <form id="quiz-form" class="quiz-form">
+        <div id="questions-wrapper" class="questions-wrapper">
+          <!-- Soal dirender dinamis via JavaScript -->
+        </div>
+
+        <div class="quiz-footer">
+          <button type="submit" id="btn-submit-quiz" class="btn-primary">
+            Submit Latihan
+          </button>
+        </div>
+      </form>
+    </main>
+
+    <script type="module" src="js/latihan.js"></script>
+  </body>
+</html>

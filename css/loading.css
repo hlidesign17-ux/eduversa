@@ -1,0 +1,69 @@
+/* Loading Component Styles */
+
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.logo-container {
+  margin-bottom: var(--space-6);
+}
+
+.logo {
+  max-width: 180px;
+  width: 100%;
+  height: auto;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: var(--transition-fade);
+}
+
+.logo.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tagline {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-light);
+  min-height: 1.8em; /* Reserve height untuk mencegah Cumulative Layout Shift (CLS) */
+  white-space: nowrap;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: var(--color-primary-light);
+  margin-left: 2px;
+  animation: blink 0.7s infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+  .typing-cursor {
+    animation: none;
+  }
+}

@@ -1,0 +1,35 @@
+<!-- Markup UI & Accessibility -->
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eduversa - Learn Beyond Limits</title>
+
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/loading.css" />
+  </head>
+  <body>
+    <main class="loading-screen" aria-label="Halaman Memuat">
+      <div class="logo-container">
+        <img
+          id="app-logo"
+          class="logo"
+          src="assets/images/eduversa.png"
+          alt="Eduversa Logo"
+          width="180"
+          height="180"
+        />
+      </div>
+
+      <p class="tagline" aria-live="polite">
+        <span id="tagline-text"></span
+        ><span class="typing-cursor" aria-hidden="true"></span>
+      </p>
+    </main>
+
+    <script type="module" src="js/loading.js"></script>
+  </body>
+</html>

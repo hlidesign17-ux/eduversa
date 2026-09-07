@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eduversa - Peringkat Keseluruhan Kelas</title>
+
+    <!-- Style Sheets -->
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/modal.css" />
+    <link rel="stylesheet" href="css/leaderboard.css" />
+    <link rel="stylesheet" href="css/leaderboard-total.css" />
+  </head>
+  <body>
+    <main class="leaderboard-total-container">
+      <header class="page-header">
+        <h1 class="main-title">Peringkat Keseluruhan Kelas</h1>
+      </header>
+
+      <section class="filter-section">
+        <div class="form-group">
+          <label for="grade-select" class="form-label"
+            >Pilih Tingkat Kelas</label
+          >
+          <select id="grade-select" class="form-input form-select">
+            <option value="" disabled selected>-- Pilih Kelas --</option>
+            <option value="4">Kelas 4</option>
+            <option value="5">Kelas 5</option>
+            <option value="6">Kelas 6</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 1.25rem">
+          <a href="02LoginPage.html" class="btn-secondary-outline">
+            &larr; Kembali ke Halaman Login
+          </a>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="leaderboard-card">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th style="width: 15%">Peringkat</th>
+                <th style="width: 55%">Username</th>
+                <th style="width: 30%">Total Skor</th>
+              </tr>
+            </thead>
+            <tbody id="total-leaderboard-body">
+              <!-- Pesan Awal Sebelum Pilih Kelas -->
+              <tr>
+                <td colspan="3" class="empty-state">
+                  Silakan pilih tingkat kelas di atas untuk melihat data
+                  peringkat.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/leaderboard-total.js"></script>
+  </body>
+</html>

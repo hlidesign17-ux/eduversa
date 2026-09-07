@@ -1,0 +1,67 @@
+.leaderboard-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+.rank-banner {
+  background-color: rgba(99, 102, 241, 0.15);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-6);
+  color: var(--color-primary-light);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-base);
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.leaderboard-table th {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.leaderboard-table tr.current-user {
+  background-color: rgba(99, 102, 241, 0.1);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-light);
+}
+
+.user-result-box {
+  padding: var(--space-4) var(--space-2);
+  text-align: center;
+}
+
+.result-text {
+  font-size: var(--text-base);
+  color: var(--color-foreground);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.result-text strong {
+  color: #818cf8;
+}
+
+.result-text code {
+  background-color: var(--color-background);
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}

@@ -1,0 +1,170 @@
+<!-- Markup Semantic & Clean -->
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eduversa - Login</title>
+
+    <!-- CSS Stylesheets -->
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/auth-card.css" />
+    <link rel="stylesheet" href="css/login.css" />
+  </head>
+  <body>
+    <main class="login-page-container">
+      <!-- SECTION 1 -->
+      <section
+        id="01Section"
+        class="auth-section"
+        aria-label="Login Edufokus TKA"
+      >
+        <div id="01Section01Container" class="auth-media">
+          <img
+            src="assets/images/edufokustka.png"
+            alt="Edufokus TKA Illustration"
+            loading="lazy"
+            width="400"
+            height="300"
+          />
+        </div>
+        <div id="01Section02Container" class="auth-form-container">
+          <h1 class="auth-header">Selamat Datang</h1>
+          <form class="auth-form" action="#" method="POST">
+            <div class="form-group">
+              <label for="username-01" class="form-label">Username</label>
+              <input
+                type="text"
+                id="username-01"
+                name="username"
+                class="form-input"
+                placeholder="Masukkan username"
+                required
+                autocomplete="username"
+              />
+            </div>
+            <div class="form-group">
+              <label for="password-01" class="form-label">Password</label>
+              <input
+                type="password"
+                id="password-01"
+                name="password"
+                class="form-input"
+                placeholder="Masukkan password"
+                required
+                autocomplete="current-password"
+              />
+            </div>
+            <button type="submit" class="btn-primary">Masuk</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- SECTION 2 -->
+      <section id="02Section" class="auth-section" aria-label="Login Educourse">
+        <div id="02Section01Container" class="auth-media">
+          <img
+            src="assets/images/educourse.png"
+            alt="Educourse Illustration"
+            loading="lazy"
+            width="400"
+            height="300"
+          />
+        </div>
+        <div id="02Section02Container" class="auth-form-container">
+          <h2 class="auth-header">Selamat Datang</h2>
+          <form class="auth-form" action="#" method="POST">
+            <div class="form-group">
+              <label for="username-02" class="form-label">Username</label>
+              <input
+                type="text"
+                id="username-02"
+                name="username"
+                class="form-input"
+                placeholder="Masukkan username"
+                required
+                autocomplete="username"
+              />
+            </div>
+            <div class="form-group">
+              <label for="password-02" class="form-label">Password</label>
+              <input
+                type="password"
+                id="password-02"
+                name="password"
+                class="form-input"
+                placeholder="Masukkan password"
+                required
+                autocomplete="current-password"
+              />
+            </div>
+            <button type="submit" class="btn-primary">Masuk</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- SECTION 3 -->
+      <section
+        id="03Section"
+        class="auth-section"
+        aria-label="Login Edualfalah"
+      >
+        <div id="03Section01Container" class="auth-media">
+          <img
+            src="assets/images/edualfalah2.png"
+            alt="Edual falah Illustration"
+            loading="lazy"
+            width="400"
+            height="300"
+          />
+        </div>
+
+        <div id="03Section02Container" class="auth-form-container">
+          <h2 class="auth-header">Selamat Datang</h2>
+
+          <!-- PERBAIKAN: Hapus action="#" dan method="POST" -->
+          <form id="login-form" class="auth-form">
+            <div class="form-group">
+              <label for="username-03" class="form-label">Username</label>
+              <input
+                type="text"
+                id="username-03"
+                name="username"
+                class="form-input"
+                placeholder="Masukkan username"
+                required
+                autocomplete="username"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="password-03" class="form-label">Password</label>
+              <input
+                type="password"
+                id="password-03"
+                name="password"
+                class="form-input"
+                placeholder="Masukkan password"
+                required
+                autocomplete="current-password"
+              />
+            </div>
+
+            <button type="submit" class="btn-primary">Masuk</button>
+          </form>
+
+          <!-- Tombol Navigasi Leaderboard Total -->
+          <a href="LeaderboardTotal.html" class="btn-secondary-outline">
+            Leaderboard Total
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/login.js"></script>
+    <!-- Script Autentikasi Login -->
+    <script type="module" src="js/login.js"></script>
+  </body>
+</html>

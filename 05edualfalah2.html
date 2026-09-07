@@ -1,0 +1,202 @@
+<!-- Markup Layer 1, Layer 2, & 3 Section -->
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eduversa - Edualfalah Dashboard</title>
+
+    <!-- CSS Style Layers -->
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/modal.css" />
+    <link rel="stylesheet" href="css/cards.css" />
+    <link rel="stylesheet" href="css/leaderboard.css" />
+    <link rel="stylesheet" href="css/edualfalah.css" />
+  </head>
+  <body>
+    <!-- LAYER 1: POP-UP MODAL ONBOARDING -->
+    <div
+      id="onboarding-modal"
+      class="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-heading"
+    >
+      <div class="modal-card">
+        <div class="modal-header-container">
+          <div class="modal-icon-badge">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <h2 id="modal-heading" class="modal-title">Lengkapi Data Diri</h2>
+          <p class="modal-subtitle">
+            Isi nama dan kelas ananda untuk memulai pembelajaran
+          </p>
+        </div>
+
+        <form id="onboarding-form" class="auth-form">
+          <div class="form-group">
+            <label for="full-name-input" class="form-label">Nama Lengkap</label>
+            <input
+              type="text"
+              id="full-name-input"
+              class="form-input"
+              placeholder="Masukkan nama lengkap"
+              required
+              autocomplete="name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="class-select" class="form-label">Pilih Kelas</label>
+            <select id="class-select" class="form-input form-select" required>
+              <option value="" disabled selected>-- Pilih Kelas --</option>
+              <option value="4A">4A</option>
+              <option value="4B">4B</option>
+              <option value="4C">4C</option>
+              <option value="4D">4D</option>
+              <option value="5A">5A</option>
+              <option value="5B">5B</option>
+              <option value="5C">5C</option>
+              <option value="5D">5D</option>
+              <option value="6A">6A</option>
+              <option value="6B">6B</option>
+              <option value="6C">6C</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            style="margin-top: var(--space-4)"
+          >
+            Data Sudah Benar
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MAIN LAYER / LAYER 2 -->
+    <main class="dashboard-container">
+      <!-- HEADER / USER INFO -->
+      <header class="user-profile-header">
+        <h1
+          id="greeting-text"
+          class="auth-header"
+          style="margin-bottom: var(--space-2)"
+        >
+          Assalamualaikum
+        </h1>
+        <p
+          id="class-text"
+          class="form-label"
+          style="font-size: var(--text-base); color: var(--color-primary-light)"
+        >
+          Kelas: -
+        </p>
+        <p
+          id="username-text"
+          class="form-label"
+          style="margin-top: var(--space-1)"
+        ></p>
+      </header>
+
+      <!-- SECTION 1: MATERI -->
+      <section id="section-materi" aria-labelledby="heading-materi">
+        <h2 id="heading-materi" class="section-title">Modul Materi</h2>
+        <div class="card-grid">
+          <!-- Card Materi 01 Aktif -->
+          <a
+            href="materi01.html"
+            class="square-card"
+            style="text-decoration: none"
+          >
+            <span>materi01</span>
+          </a>
+
+          <!-- Card Materi 02 & 03 Terkunci -->
+          <div class="square-card locked" aria-disabled="true" title="Terkunci">
+            <svg class="locked-icon" viewBox="0 0 24 24">
+              <path
+                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"
+              />
+            </svg>
+            <span>materi02</span>
+          </div>
+          <div class="square-card locked" aria-disabled="true" title="Terkunci">
+            <svg class="locked-icon" viewBox="0 0 24 24">
+              <path
+                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"
+              />
+            </svg>
+            <span>materi03</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: LATIHAN -->
+      <section id="section-latihan" aria-labelledby="heading-latihan">
+        <h2 id="heading-latihan" class="section-title">Modul Latihan</h2>
+        <div class="card-grid">
+          <!-- Card Latihan 01 Aktif -->
+          <a
+            href="06Latihan01.html"
+            id="card-latihan-01"
+            class="square-card"
+            style="text-decoration: none"
+          >
+            <span>latihan01</span>
+          </a>
+
+          <!-- Card Latihan 02 Terkunci -->
+          <div class="square-card locked" aria-disabled="true" title="Terkunci">
+            <svg class="locked-icon" viewBox="0 0 24 24">
+              <path
+                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"
+              />
+            </svg>
+            <span>latihan02</span>
+          </div>
+
+          <!-- Card Latihan 03 Terkunci -->
+          <div class="square-card locked" aria-disabled="true" title="Terkunci">
+            <svg class="locked-icon" viewBox="0 0 24 24">
+              <path
+                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"
+              />
+            </svg>
+            <span>latihan03</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: HASIL LATIHAN & PERINGKAT -->
+      <section id="section-leaderboard" aria-labelledby="heading-leaderboard">
+        <h2 id="heading-leaderboard" class="section-title">Hasil Latihan 01</h2>
+        <div class="leaderboard-card">
+          <div id="rank-summary-text" class="rank-banner">
+            Menghitung hasil latihan ananda...
+          </div>
+          <div id="user-result-detail" class="user-result-box">
+            <!-- Teks detail hasil latihan akan diisi via JS -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/edualfalah.js"></script>
+  </body>
+</html>

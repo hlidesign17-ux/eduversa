@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eduversa - Materi 01</title>
+
+    <!-- Style Sheets -->
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/materi.css" />
+  </head>
+  <body>
+    <main class="materi-page-container">
+      <header class="materi-header">
+        <h1 class="materi-title">Materi 01</h1>
+        <p class="materi-subtitle">
+          Pelajari materi di bawah ini dengan seksama
+        </p>
+      </header>
+
+      <!-- CONTENT CONTAINERS SECTION -->
+      <section class="materi-content-list" aria-label="Daftar Konten Materi">
+        <!-- Container 01 -->
+        <article class="materi-container-card">
+          <div class="materi-image-wrapper">
+            <img
+              src="assets/images/materi01container01.png"
+              alt="Materi 01 Bagian 1"
+              loading="lazy"
+            />
+          </div>
+        </article>
+
+        <!-- Container 02 -->
+        <article class="materi-container-card">
+          <div class="materi-image-wrapper">
+            <img
+              src="assets/images/materi01container02.png"
+              alt="Materi 01 Bagian 2"
+              loading="lazy"
+            />
+          </div>
+        </article>
+
+        <!-- Container 03 -->
+        <article class="materi-container-card">
+          <div class="materi-image-wrapper">
+            <img
+              src="assets/images/materi01container03.png"
+              alt="Materi 01 Bagian 3"
+              loading="lazy"
+            />
+          </div>
+        </article>
+
+        <!-- Tempat untuk menambahkan container 04, 05, dst. di masa mendatang -->
+      </section>
+
+      <!-- FOOTER ACTION BUTTON -->
+      <footer class="materi-footer">
+        <a href="05edualfalah2.html" id="btn-understand" class="btn-understand">
+          Sudah Mengerti
+        </a>
+      </footer>
+
+      <script>
+        // Event Handler saat Tombol "Sudah Mengerti" Diklik
+        document
+          .getElementById("btn-understand")
+          .addEventListener("click", () => {
+            localStorage.setItem("materi01_completed", "true");
+          });
+      </script>
+    </main>
+  </body>
+</html>

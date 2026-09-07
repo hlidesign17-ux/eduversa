@@ -1,0 +1,53 @@
+/* square & locked card components */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+.square-card {
+  aspect-ratio: 1 / 1;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-decoration: none;
+  color: var(--color-foreground);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-base);
+  box-shadow: var(--shadow-md);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast);
+  cursor: pointer;
+  position: relative;
+}
+
+/* Interactive Card State */
+.square-card:not(.locked):hover {
+  transform: translateY(-4px);
+  border-color: var(--color-primary);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+}
+
+/* Locked Card State */
+.square-card.locked {
+  opacity: 0.5;
+  background-color: var(--color-background);
+  border-style: dashed;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.locked-icon {
+  width: 24px;
+  height: 24px;
+  fill: var(--color-muted);
+}
