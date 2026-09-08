@@ -10,13 +10,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!loginForm) return;
 
+  // 1. Ambil atau Buat Device ID Unik di Perangkat Ini
+  let deviceId = localStorage.getItem("edualfalah_device_id");
+  if (!deviceId) {
+    deviceId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : "dev_" + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    localStorage.setItem("edualfalah_device_id", deviceId);
+  }
+
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const inputUsername = usernameInput.value.trim().toLowerCase();
     const inputPassword = passwordInput.value.trim();
 
-    // 1. Validasi Kredensial (MOCK_USERS)
+    // 2. Validasi Kredensial Lokal (MOCK_USERS)
     const foundUser = MOCK_USERS.find(
       (user) =>
         user.username === inputUsername && user.password === inputPassword,
@@ -28,71 +38,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // 2. CEK STATUS AKUN DI SUPABASE
-      const { data, error } = await supabase
+      // 3. CEK PENGUNCIAN PERANGKAT DARI SUPABASE
+      // Cek apakah ada AKUN LAIN di Supabase yang sedang mengunci device_id perangkat ini
+      const { data: boundUser, error: boundErr } = await supabase
         .from("users")
-        .select("full_name, is_used")
-        .eq("username", inputUsername)
+        .select("username")
+        .eq("device_id", deviceId)
+        .neq("username", inputUsername)
         .maybeSingle();
 
-      if (error) {
-        console.error("Supabase Error:", error);
-      }
+      if (boundErr) console.error("Supabase Device Check Error:", boundErr);
 
-      // SINKRONISASI: Jika data akun di Supabase TIDAK ADA (karena tabel dihapus/di-reset),
-      // Bersihkan penguncian perangkat lokal agar akun bisa mendaftar ulang secara bersih.
-      if (!data) {
-        const currentOwner = localStorage.getItem("edualfalah_device_owner");
-        if (currentOwner === inputUsername) {
-          localStorage.removeItem("edualfalah_device_owner");
-          localStorage.removeItem("edualfalah_session");
-          localStorage.removeItem("edualfalah_fullname");
-          localStorage.removeItem("edualfalah_class");
-          localStorage.removeItem("materi01_completed");
-          localStorage.removeItem(`latihan01_locked_${inputUsername}`);
-        }
-      }
-
-      // 3. CEK DEVICE LOCK (Pencegahan Login Akun Lain dari Perangkat yang Sama)
-      const activeDeviceUser = localStorage.getItem("edualfalah_device_owner");
-
-      if (activeDeviceUser && activeDeviceUser !== inputUsername) {
+      // Jika akun lain MASIH ADA di Supabase dan memegang device_id ini -> BLOKIR LOGIN
+      if (boundUser) {
         alert(
-          `AKSES DITOLAK!\nPerangkat ini sudah terdaftar untuk pengguna @${activeDeviceUser}.\nAnda tidak diizinkan menggunakan username lain pada perangkat yang sama.`,
+          `AKSES DITOLAK!\nPerangkat ini sudah terdaftar untuk pengguna @${boundUser.username}.\nAnda tidak diizinkan menggunakan username lain pada perangkat yang sama.`,
         );
         return;
       }
 
-      // 4. CEK APAKAH AKUN SUDAH DIPAKAI DI PERANGKAT LAIN
-      if (data && data.is_used) {
-        if (activeDeviceUser !== inputUsername) {
-          alert(
-            `Maaf, akun @${inputUsername} sudah terpakai di perangkat/sesi lain.`,
-          );
-          return;
-        }
-      }
+      // 4. CEK AKUN SAAT INI DI SUPABASE
+      const { data: existingUser, error: userErr } = await supabase
+        .from("users")
+        .select("username, device_id, is_used")
+        .eq("username", inputUsername)
+        .maybeSingle();
 
-      // 5. EXTRACT GRADE & UPSERT KE SUPABASE
-      // Ambil angka dari grade atau className (misal "6C" -> 6)
+      if (userErr) console.error("Supabase User Check Error:", userErr);
+
+      // 5. PENYESUAIAN METADATA & CALCULATED GRADE
       const calculatedGrade =
         parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
 
+      // 6. UPSERT AKUN KE SUPABASE (Ikat device_id ke akun ini)
       await supabase.from("users").upsert(
         {
           username: inputUsername,
           full_name: foundUser.fullname || inputUsername,
           class_name: foundUser.className || `${calculatedGrade}A`,
           grade: calculatedGrade,
+          device_id: deviceId, // Merekam ID Perangkat di Supabase
           is_used: true,
         },
         { onConflict: "username" },
       );
 
-      // 6. DAFTARKAN PERANGKAT KEPADA USER INI (Device Binding)
+      // 7. BERSIHKAN LOCALSTORAGE LAMA & SIMPAN SESI BARU
+      // Simpan deviceId agar tidak hilang saat localStorage dibersihkan
+      const currentDeviceId = localStorage.getItem("edualfalah_device_id");
+      localStorage.clear();
+      localStorage.setItem("edualfalah_device_id", currentDeviceId);
       localStorage.setItem("edualfalah_device_owner", inputUsername);
 
-      // 7. Simpan Session Login Baru
+      // Simpan Sesi
       localStorage.setItem(
         "edualfalah_session",
         JSON.stringify({
