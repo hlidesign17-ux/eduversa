@@ -73,16 +73,32 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // 5. DAFTARKAN PERANGKAT KEPADA USER INI (Device Binding)
+      // 5. EXTRACT GRADE & UPSERT KE SUPABASE
+      // Ambil angka dari grade atau className (misal "6C" -> 6)
+      const calculatedGrade =
+        parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
+
+      await supabase.from("users").upsert(
+        {
+          username: inputUsername,
+          full_name: foundUser.fullname || inputUsername,
+          class_name: foundUser.className || `${calculatedGrade}A`,
+          grade: calculatedGrade,
+          is_used: true,
+        },
+        { onConflict: "username" },
+      );
+
+      // 6. DAFTARKAN PERANGKAT KEPADA USER INI (Device Binding)
       localStorage.setItem("edualfalah_device_owner", inputUsername);
 
-      // 6. Simpan Session Login Baru
+      // 7. Simpan Session Login Baru
       localStorage.setItem(
         "edualfalah_session",
         JSON.stringify({
           username: foundUser.username,
           className: foundUser.className,
-          grade: foundUser.grade,
+          grade: calculatedGrade,
           isLoggedIn: true,
         }),
       );
