@@ -10,7 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!loginForm) return;
 
-  // 1. Ambil atau Buat Device ID Unik di Perangkat Ini
+  // ==========================================
+  // 1. MANAJEMEN DEVICE ID UNIK
+  // ==========================================
   let deviceId = localStorage.getItem("edualfalah_device_id");
   if (!deviceId) {
     deviceId =
@@ -22,13 +24,16 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("edualfalah_device_id", deviceId);
   }
 
+  // ==========================================
+  // 2. EVENT LISTENER SUBMIT LOGIN
+  // ==========================================
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const inputUsername = usernameInput.value.trim().toLowerCase();
     const inputPassword = passwordInput.value.trim();
 
-    // 2. Validasi Kredensial Lokal (MOCK_USERS)
+    // A. Validasi Kredensial Lokal (MOCK_USERS)
     const foundUser = MOCK_USERS.find(
       (user) =>
         user.username === inputUsername && user.password === inputPassword,
@@ -40,8 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // 3. CEK PENGUNCIAN PERANGKAT DARI SUPABASE
-      // Cek apakah ada AKUN LAIN di Supabase yang sedang mengunci device_id perangkat ini
+      // B. CEK PENGUNCIAN PERANGKAT DARI SUPABASE
+      // Pastikan device ini tidak sedang dikunci oleh akun lain
       const { data: boundUser, error: boundErr } = await supabase
         .from("users")
         .select("username")
@@ -51,7 +56,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (boundErr) console.error("Supabase Device Check Error:", boundErr);
 
-      // Jika akun lain MASIH ADA di Supabase dan memegang device_id ini -> BLOKIR LOGIN
       if (boundUser) {
         alert(
           `AKSES DITOLAK!\nPerangkat ini sudah terdaftar untuk pengguna @${boundUser.username}.\nAnda tidak diizinkan menggunakan username lain pada perangkat yang sama.`,
@@ -59,40 +63,56 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 4. CEK AKUN SAAT INI DI SUPABASE
+      // C. CEK DATA EKSISTING DI SUPABASE (Cegah Penimpaan Nama Asli)
       const { data: existingUser, error: userErr } = await supabase
         .from("users")
-        .select("username, device_id, is_used")
+        .select("username, full_name, class_name, device_id")
         .eq("username", inputUsername)
         .maybeSingle();
 
       if (userErr) console.error("Supabase User Check Error:", userErr);
 
-      // 5. PENYESUAIAN METADATA & CALCULATED GRADE
       const calculatedGrade =
         parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
 
-      // 6. UPSERT AKUN KE SUPABASE (Ikat device_id ke akun ini)
-      await supabase.from("users").upsert(
-        {
-          username: inputUsername,
-          full_name: foundUser.fullname || null, // Biarkan NULL jika tidak ada di MOCK_USERS agar pop-up muncul
-          class_name: foundUser.className || null,
-          grade: calculatedGrade,
-          device_id: deviceId,
-          is_used: true,
-        },
-        { onConflict: "username" },
-      );
+      // D. MENYUSUN DATA USER (Tidak Menimpa Nama yang Sudah Diisi di Pop-up)
+      const userDataToSave = {
+        username: inputUsername,
+        device_id: deviceId,
+        is_used: true,
+      };
 
-      // 7. BERSIHKAN LOCALSTORAGE LAMA & SIMPAN SESI BARU
-      // Simpan deviceId agar tidak hilang saat localStorage dibersihkan
+      // Hanya set data default jika user belum pernah memiliki full_name/class_name di DB
+      if (
+        !existingUser ||
+        !existingUser.full_name ||
+        existingUser.full_name === inputUsername
+      ) {
+        userDataToSave.full_name = foundUser.fullname || null;
+      }
+
+      if (!existingUser || !existingUser.class_name) {
+        userDataToSave.class_name = foundUser.className || null;
+        userDataToSave.grade = calculatedGrade;
+      }
+
+      // E. ESEKUSI UPSERT KE SUPABASE DENGAN AWAIT
+      const { error: upsertErr } = await supabase
+        .from("users")
+        .upsert(userDataToSave, { onConflict: "username" });
+
+      if (upsertErr) {
+        console.error("Gagal simpan user ke Supabase:", upsertErr);
+        alert("Gagal melakukan autentikasi ke server. Coba lagi.");
+        return;
+      }
+
+      // F. BERSIHKAN LOCALSTORAGE LAMA & SIMPAN SESI BARU
       const currentDeviceId = localStorage.getItem("edualfalah_device_id");
       localStorage.clear();
       localStorage.setItem("edualfalah_device_id", currentDeviceId);
       localStorage.setItem("edualfalah_device_owner", inputUsername);
 
-      // Simpan Sesi
       localStorage.setItem(
         "edualfalah_session",
         JSON.stringify({
@@ -103,14 +123,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }),
       );
 
-      // Redirect ke Halaman Utama
-      window.location.href = "05edualfalah2.html";
+      // G. REDIRECT DENGAN JEDA SINGKAT (Mencegah Race Condition/Alert Penendangan)
+      setTimeout(() => {
+        window.location.href = "05edualfalah2.html";
+      }, 100);
     } catch (err) {
       console.error("Connection error:", err);
       alert("Gagal terhubung ke database. Periksa koneksi internet Anda.");
     }
   });
-  // Toggle Mata Password
+
+  // ==========================================
+  // 3. TOGGLE MATA PASSWORD
+  // ==========================================
   const toggleBtn = document.getElementById("toggle-password-03");
   if (toggleBtn && passwordInput) {
     const eyeOpen = toggleBtn.querySelector(".eye-open");

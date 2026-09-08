@@ -48,8 +48,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Cek ketersediaan akun saat ini di Supabase
-    const { data: currentUserData, error: userErr } = await supabase
+    // B. Cek ketersediaan akun saat ini di Supabase (Dengan Toleransi Sync)
+    let { data: currentUserData, error: userErr } = await supabase
       .from("users")
       .select("username, device_id")
       .eq("username", currentUsername)
@@ -57,17 +57,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (userErr) console.error("Error cek user aktif:", userErr);
 
+    // JIKA DATA BELUM MASUK / SINKRONISASI TERLAMBAT -> LAKUKAN AUTO-REGISTER DARURAT
     if (!currentUserData) {
-      alert(
-        "Akun telah dihapus dari server. Perangkat ini sekarang bebas digunakan untuk akun lain.",
+      const { error: insertErr } = await supabase.from("users").upsert(
+        {
+          username: currentUsername,
+          device_id: deviceId,
+          is_used: true,
+        },
+        { onConflict: "username" },
       );
-      clearLocalSessionExceptDevice();
-      window.location.href = "02LoginPage.html";
-      return;
-    }
 
-    // C. Ikatkan device_id jika belum terikat
-    if (!currentUserData.device_id) {
+      if (insertErr) {
+        alert(
+          "Akun telah dihapus dari server. Perangkat ini sekarang bebas digunakan untuk akun lain.",
+        );
+        clearLocalSessionExceptDevice();
+        window.location.href = "02LoginPage.html";
+        return;
+      }
+    } else if (!currentUserData.device_id) {
+      // C. Ikatkan device_id jika belum terikat di Supabase
       await supabase
         .from("users")
         .update({ device_id: deviceId })
@@ -125,7 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .maybeSingle();
 
     // Validasi: Jika full_name KOSONG, SAMA DENGAN USERNAME, atau belum set KELAS
-    // Maka TAMPILKAN POP-UP ONBOARDING untuk minta Nama Lengkap Asli
+    // Maka TAMPILKAN POP-UP ONBOARDING untuk meminta Nama Lengkap Asli
     const needsOnboarding =
       !profileData ||
       !profileData.full_name ||
@@ -145,7 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       renderUserSummary(currentUsername, profileData.full_name);
     } else {
-      // Jika belum diisi dengan benar -> TAMPILKAN POP-UP POPUP BISA DISIMPANKAN
+      // Jika belum diisi dengan benar -> TAMPILKAN POP-UP ONBOARDING
       if (onboardingModal) onboardingModal.classList.remove("hidden");
     }
   } catch (err) {
