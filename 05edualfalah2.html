@@ -93,26 +93,51 @@
     <main class="dashboard-container">
       <!-- HEADER / USER INFO -->
       <header class="user-profile-header">
-        <h1
-          id="greeting-text"
-          class="auth-header"
-          style="margin-bottom: var(--space-2)"
-        >
-          Assalamualaikum
-        </h1>
-        <p
-          id="class-text"
-          class="form-label"
-          style="font-size: var(--text-base); color: var(--color-primary-light)"
-        >
-          Kelas: -
-        </p>
-        <p
-          id="username-text"
-          class="form-label"
-          style="margin-top: var(--space-1)"
-        ></p>
+        <div class="user-info-left">
+          <h1
+            id="greeting-text"
+            class="auth-header"
+            style="margin-bottom: var(--space-2)"
+          >
+            Assalamualaikum
+          </h1>
+          <p
+            id="class-text"
+            class="form-label"
+            style="
+              font-size: var(--text-base);
+              color: var(--color-primary-light);
+            "
+          >
+            Kelas: -
+          </p>
+          <p
+            id="username-text"
+            class="form-label"
+            style="margin-top: var(--space-1)"
+          ></p>
+        </div>
+
+        <!-- Tombol Leaderboard Total di Kanan Atas -->
+        <div class="header-action-right">
+          <button id="btn-leaderboard-total" class="btn-leaderboard">
+            Leaderboard Total
+          </button>
+        </div>
       </header>
+
+      <!-- Modal Overlay (80% Ukuran Layar) -->
+      <div id="leaderboard-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content-80">
+          <div class="modal-header">
+            <h2>Peringkat Total Siswa</h2>
+            <button id="btn-close-modal" class="close-btn">&times;</button>
+          </div>
+          <div id="modal-leaderboard-body" class="modal-body">
+            <p class="loading-text">Memuat data peringkat...</p>
+          </div>
+        </div>
+      </div>
 
       <!-- SECTION 1: MATERI -->
       <section id="section-materi" aria-labelledby="heading-materi">

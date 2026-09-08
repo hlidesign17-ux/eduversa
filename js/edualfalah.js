@@ -1,4 +1,3 @@
-import { MOCK_LEADERBOARD } from "./mock-data.js";
 import { supabase } from "./supabase-config.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -20,15 +19,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const classText = document.getElementById("class-text");
   const usernameText = document.getElementById("username-text");
 
-  const rankSummaryText = document.getElementById("rank-summary-text");
   const userResultDetail = document.getElementById("user-result-detail");
-
-  // DOM Element untuk Card Latihan 01
   const cardLatihan01 = document.getElementById("card-latihan-01");
+
+  // DOM Elements Modal Leaderboard Total
+  const btnLeaderboardTotal = document.getElementById("btn-leaderboard-total");
+  const leaderboardOverlay = document.getElementById(
+    "leaderboard-modal-overlay",
+  );
+  const btnCloseModal = document.getElementById("btn-close-modal");
+  const modalLeaderboardBody = document.getElementById(
+    "modal-leaderboard-body",
+  );
 
   usernameText.textContent = `@${currentUsername}`;
 
-  // 3. CEK PENGUNCIAN CARD LATIHAN 01 (Ditaruh di sini)
+  // 3. CEK PENGUNCIAN CARD LATIHAN 01
   const isLatihanLocked =
     localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
 
@@ -45,12 +51,10 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  // 4. CEK KONDISI POP-UP MODAL
-  if (isMateriCompleted) {
-    // Sembunyikan Pop-Up Modal
+  // 4. CEK KONDISI POP-UP MODAL ONBOARDING
+  if (isMateriCompleted && onboardingModal) {
     onboardingModal.classList.add("hidden");
 
-    // Ambil data profil dari penyimpanan lokal
     const savedName =
       localStorage.getItem("edualfalah_fullname") || currentUsername;
     const savedClass = localStorage.getItem("edualfalah_class") || "4A";
@@ -58,79 +62,135 @@ document.addEventListener("DOMContentLoaded", () => {
     greetingText.textContent = `Assalamualaikum, ${savedName}`;
     classText.textContent = `Kelas: ${savedClass}`;
 
-    // Tampilkan Peringkat & Hasil Latihan Langsung
-    processLeaderboard(currentUsername, savedClass, savedName);
+    renderUserSummary(currentUsername, savedName);
   }
 
-  // 5. Handle Form Submit dengan Penguncian Akun di Supabase
-  onboardingForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // 5. Handle Form Submit Onboarding (Kunci Profil ke Supabase)
+  if (onboardingForm) {
+    onboardingForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const fullName = fullNameInput.value.trim();
-    const selectedClass = classSelect.value;
+      const fullName = fullNameInput.value.trim();
+      const selectedClass = classSelect.value;
 
-    if (!fullName || !selectedClass) return;
+      if (!fullName || !selectedClass) return;
 
-    try {
-      // Upsert data ke Supabase agar is_used berubah jadi true
-      const { error } = await supabase.from("users").upsert({
-        username: currentUsername,
-        full_name: fullName,
-        class_name: selectedClass,
-        is_used: true,
-      });
+      try {
+        const { error } = await supabase.from("users").upsert({
+          username: currentUsername,
+          full_name: fullName,
+          class_name: selectedClass,
+          is_used: true,
+        });
 
-      if (error) {
-        console.error("Gagal mengunci akun di Supabase:", error);
-        alert("Gagal menyimpan profil ke server. Periksa koneksi Anda.");
-        return;
+        if (error) {
+          console.error("Gagal mengunci akun di Supabase:", error);
+          alert("Gagal menyimpan profil ke server. Periksa koneksi Anda.");
+          return;
+        }
+
+        localStorage.setItem("edualfalah_fullname", fullName);
+        localStorage.setItem("edualfalah_class", selectedClass);
+
+        greetingText.textContent = `Assalamualaikum, ${fullName}`;
+        classText.textContent = `Kelas: ${selectedClass}`;
+
+        if (onboardingModal) onboardingModal.classList.add("hidden");
+        renderUserSummary(currentUsername, fullName);
+      } catch (err) {
+        console.error("Error:", err);
+        alert("Terjadi kesalahan sistem saat memproses profil.");
       }
+    });
+  }
 
-      // Simpan data profil ke storage lokal
-      localStorage.setItem("edualfalah_fullname", fullName);
-      localStorage.setItem("edualfalah_class", selectedClass);
-
-      greetingText.textContent = `Assalamualaikum, ${fullName}`;
-      classText.textContent = `Kelas: ${selectedClass}`;
-
-      onboardingModal.classList.add("hidden");
-      processLeaderboard(currentUsername, selectedClass, fullName);
-    } catch (err) {
-      console.error("Error:", err);
-      alert("Terjadi kesalahan sistem saat memproses profil.");
-    }
-  });
-
-  // 6. Logic Leaderboard Kalimat Naratif
-  function processLeaderboard(username, rawClass, fullName) {
-    const gradeNumber = parseInt(rawClass.charAt(0), 10);
-    const filteredList = MOCK_LEADERBOARD.filter(
-      (item) => item.grade === gradeNumber,
-    );
-
-    // Ambil nilai dari storage jika ada, jika belum ada pakai default 0
+  // 6. Ringkasan Nilai Latihan User Saja (Tanpa Narasi Peringkat)
+  function renderUserSummary(username, fullName) {
     const savedScore =
       parseInt(localStorage.getItem(`latihan01_score_${username}`), 10) || 0;
 
-    const currentUserData = {
-      username: username,
-      displayName: fullName,
-      score: savedScore,
-      isCurrentUser: true,
-    };
+    if (userResultDetail) {
+      userResultDetail.innerHTML = `
+        <p class="result-text">
+          Ananda <strong>${fullName}</strong> (<code>@${username}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${savedScore}</strong>.
+        </p>
+      `;
+    }
+  }
 
-    const fullList = [...filteredList, currentUserData];
-    fullList.sort((a, b) => b.score - a.score);
+  // 7. POP-UP LEADERBOARD TOTAL (Data Real-time Supabase)
+  async function loadRealLeaderboardData() {
+    if (!modalLeaderboardBody) return;
+    modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
 
-    const userRank = fullList.findIndex((item) => item.isCurrentUser) + 1;
-    const totalStudents = fullList.length;
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("full_name, class_name, score_latihan01")
+        .not("full_name", "is", null)
+        .order("score_latihan01", { ascending: false });
 
-    rankSummaryText.textContent = `ananda peringkat ke ${userRank} dari ${totalStudents} orang yang telah menyelesaikan`;
+      if (error) throw error;
 
-    userResultDetail.innerHTML = `
-      <p class="result-text">
-        Ananda <strong>${fullName}</strong> (<code>@${username}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${currentUserData.score}</strong>.
-      </p>
-    `;
+      if (!data || data.length === 0) {
+        modalLeaderboardBody.innerHTML = `<p>Belum ada data nilai siswa.</p>`;
+        return;
+      }
+
+      let tableHTML = `
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Peringkat</th>
+              <th>Nama Lengkap</th>
+              <th>Kelas</th>
+              <th>Skor</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      data.forEach((user, index) => {
+        tableHTML += `
+          <tr>
+            <td><strong>#${index + 1}</strong></td>
+            <td>${user.full_name || "-"}</td>
+            <td>${user.class_name || "-"}</td>
+            <td><strong>${user.score_latihan01 ?? 0}</strong></td>
+          </tr>
+        `;
+      });
+
+      tableHTML += `</tbody></table>`;
+      modalLeaderboardBody.innerHTML = tableHTML;
+    } catch (err) {
+      console.error("Gagal memuat leaderboard:", err);
+      modalLeaderboardBody.innerHTML = `<p class="error-text">Gagal mengambil data peringkat.</p>`;
+    }
+  }
+
+  // Event Handler Modal Leaderboard
+  if (btnLeaderboardTotal) {
+    btnLeaderboardTotal.addEventListener("click", () => {
+      if (leaderboardOverlay) {
+        leaderboardOverlay.classList.remove("hidden");
+        loadRealLeaderboardData();
+      }
+    });
+  }
+
+  if (btnCloseModal) {
+    btnCloseModal.addEventListener("click", () => {
+      if (leaderboardOverlay) leaderboardOverlay.classList.add("hidden");
+    });
+  }
+
+  // Tutup Pop-Up Jika User Menekan Layer Dasar (Overlay 20% Luar Modal)
+  if (leaderboardOverlay) {
+    leaderboardOverlay.addEventListener("click", (e) => {
+      if (e.target === leaderboardOverlay) {
+        leaderboardOverlay.classList.add("hidden");
+      }
+    });
   }
 });
