@@ -1,47 +1,85 @@
-// logic dropdown dan privasi data
-
-import { MOCK_LEADERBOARD } from "./mock-data.js";
+// js/leaderboard-total.js
+import { supabase } from "./supabase-config.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const gradeSelect = document.getElementById("grade-select");
   const leaderboardBody = document.getElementById("total-leaderboard-body");
 
-  gradeSelect.addEventListener("change", (e) => {
+  if (!gradeSelect || !leaderboardBody) return;
+
+  gradeSelect.addEventListener("change", async (e) => {
     const selectedGrade = parseInt(e.target.value, 10);
-    renderLeaderboardByGrade(selectedGrade);
+    if (!selectedGrade) return;
+
+    await renderLeaderboardByGrade(selectedGrade);
   });
 
-  function renderLeaderboardByGrade(grade) {
-    // 1. Filter Data Berdasarkan Tingkat Kelas (4, 5, atau 6)
-    const filteredData = MOCK_LEADERBOARD.filter(
-      (item) => item.grade === grade,
-    );
+  async function renderLeaderboardByGrade(grade) {
+    // 1. Tampilkan Indikator Loading
+    leaderboardBody.innerHTML = `
+      <tr>
+        <td colspan="3" class="empty-state">Memuat data peringkat kelas ${grade}...</td>
+      </tr>
+    `;
 
-    // 2. Urutkan Berdasarkan Skor Tertinggi
-    filteredData.sort((a, b) => b.score - a.score);
+    try {
+      // 2. Ambil Data Real-time dari Supabase Berdasarkan Grade
+      const { data, error } = await supabase
+        .from("users")
+        .select("username, score_latihan01, grade")
+        .eq("grade", grade)
+        .order("score_latihan01", { ascending: false });
 
-    // 3. Jika Data Kosong
-    if (filteredData.length === 0) {
+      if (error) {
+        console.error("Supabase Error:", error);
+        leaderboardBody.innerHTML = `
+          <tr>
+            <td colspan="3" class="empty-state">
+              Gagal memuat data dari server. Periksa koneksi internet Anda.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // 3. Jika Data Kosong
+      if (!data || data.length === 0) {
+        leaderboardBody.innerHTML = `
+          <tr>
+            <td colspan="3" class="empty-state">
+              Belum ada data nilai untuk Kelas ${grade}.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // 4. Render Tabel (Hanya Username & Skor demi Privasi)
+      leaderboardBody.innerHTML = data
+        .map((item, index) => {
+          const rank = index + 1;
+          let rankDisplay = `<strong>${rank}</strong>`;
+
+          if (rank === 1) rankDisplay = "🥇 1";
+          else if (rank === 2) rankDisplay = "🥈 2";
+          else if (rank === 3) rankDisplay = "🥉 3";
+
+          return `
+            <tr>
+              <td>${rankDisplay}</td>
+              <td>@${item.username}</td>
+              <td><strong>${item.score_latihan01 || 0}</strong></td>
+            </tr>
+          `;
+        })
+        .join("");
+    } catch (err) {
+      console.error("Error:", err);
       leaderboardBody.innerHTML = `
         <tr>
-          <td colspan="3" class="empty-state">
-            Belum ada data nilai untuk Kelas ${grade}.
-          </td>
+          <td colspan="3" class="empty-state">Terjadi kesalahan sistem.</td>
         </tr>
       `;
-      return;
     }
-
-    // 4. Render Tabel (Nama Lengkap Dihilangkan/Tidak Dipakai untuk Privasi)
-    leaderboardBody.innerHTML = "";
-    filteredData.forEach((item, index) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td><strong>${index + 1}</strong></td>
-        <td>@${item.username}</td>
-        <td><strong>${item.score}</strong></td>
-      `;
-      leaderboardBody.appendChild(row);
-    });
   }
 });
