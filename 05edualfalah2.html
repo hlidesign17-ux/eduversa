@@ -126,14 +126,29 @@
         </div>
       </header>
 
-      <!-- Modal Overlay (80% Ukuran Layar) -->
+      <!-- Modal Overlay Leaderboard Total (Optimized for Mobile) -->
       <div id="leaderboard-modal-overlay" class="modal-overlay hidden">
-        <div class="modal-content-80">
+        <div class="modal-card leaderboard-modal-card">
           <div class="modal-header">
-            <h2>Peringkat Total Siswa</h2>
-            <button id="btn-close-modal" class="close-btn">&times;</button>
+            <h2>Peringkat Keseluruhan Kelas</h2>
+            <button id="btn-close-modal" class="btn-close">&times;</button>
           </div>
-          <div id="modal-leaderboard-body" class="modal-body">
+
+          <!-- Dropdown Filter Kelas -->
+          <div class="filter-container">
+            <label for="dashboard-grade-select" class="form-label"
+              >Tingkat Kelas:</label
+            >
+            <select id="dashboard-grade-select" class="form-input form-select">
+              <option value="all">Semua Kelas</option>
+              <option value="4">Kelas 4</option>
+              <option value="5">Kelas 5</option>
+              <option value="6">Kelas 6</option>
+            </select>
+          </div>
+
+          <!-- Container Tabel dengan Scroll Internal -->
+          <div id="modal-leaderboard-body" class="modal-body-scroll">
             <p class="loading-text">Memuat data peringkat...</p>
           </div>
         </div>

@@ -53,6 +53,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const modalLeaderboardBody = document.getElementById(
     "modal-leaderboard-body",
   );
+  const dashboardGradeSelect = document.getElementById(
+    "dashboard-grade-select",
+  );
 
   if (usernameText) usernameText.textContent = `@${currentUsername}`;
 
@@ -101,11 +104,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!fullName || !selectedClass) return;
 
+      // Ekstraksi tingkat kelas (misal "5B" -> 5)
+      const calculatedGrade = parseInt(selectedClass, 10) || 4;
+
       try {
         const { error } = await supabase.from("users").upsert({
           username: currentUsername,
           full_name: fullName,
           class_name: selectedClass,
+          grade: calculatedGrade,
           is_used: true,
         });
 
@@ -144,7 +151,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // 7. FETCH LEADERBOARD REAL-TIME
+  // 7. FETCH & RENDER LEADERBOARD REAL-TIME
+  let cachedLeaderboardData = [];
+
   async function loadRealLeaderboardData() {
     if (!modalLeaderboardBody) return;
     modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
@@ -152,61 +161,105 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const { data, error } = await supabase
         .from("users")
-        .select("full_name, class_name, score_latihan01")
-        .not("full_name", "is", null)
+        .select("username, class_name, grade, score_latihan01")
         .order("score_latihan01", { ascending: false });
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        modalLeaderboardBody.innerHTML = `<p style="padding: 1rem; text-align: center;">Belum ada data siswa yang tersimpan di server.</p>`;
-        return;
-      }
-
-      let tableHTML = `
-        <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>Peringkat</th>
-              <th>Nama Lengkap</th>
-              <th>Kelas</th>
-              <th>Skor</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      data.forEach((user, index) => {
-        tableHTML += `
-          <tr>
-            <td><strong>#${index + 1}</strong></td>
-            <td>${user.full_name || "-"}</td>
-            <td>${user.class_name || "-"}</td>
-            <td><strong>${user.score_latihan01 ?? 0}</strong></td>
-          </tr>
-        `;
-      });
-
-      tableHTML += `</tbody></table>`;
-      modalLeaderboardBody.innerHTML = tableHTML;
+      cachedLeaderboardData = data || [];
+      renderFilteredLeaderboard();
     } catch (err) {
       console.error("Gagal memuat leaderboard:", err);
       modalLeaderboardBody.innerHTML = `
         <div style="padding: 1rem; text-align: center; color: #f43f5e;">
           <p>Gagal memuat data dari server.</p>
-          <small style="color: #94a3b8;">Periksa kebijakan akses (RLS) pada tabel 'users' di Supabase.</small>
+          <small style="color: #94a3b8;">Periksa koneksi internet Anda.</small>
         </div>
       `;
     }
   }
 
-  // Event Listeners Modal Leaderboard
+  function renderFilteredLeaderboard() {
+    if (!modalLeaderboardBody) return;
+
+    const selectedGrade = dashboardGradeSelect
+      ? dashboardGradeSelect.value
+      : "all";
+
+    // Filter data berdasarkan tingkat kelas
+    const filtered = cachedLeaderboardData.filter((user) => {
+      if (selectedGrade === "all") return true;
+      const gradeNum = parseInt(selectedGrade, 10);
+      if (user.grade === gradeNum) return true;
+      if (user.class_name && user.class_name.startsWith(selectedGrade))
+        return true;
+      return false;
+    });
+
+    if (filtered.length === 0) {
+      modalLeaderboardBody.innerHTML = `
+        <p style="padding: 1rem; text-align: center; color: #94a3b8;">
+          Belum ada data nilai untuk kelas ini.
+        </p>
+      `;
+      return;
+    }
+
+    let tableHTML = `
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Peringkat</th>
+            <th>Username</th>
+            <th>Skor</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    let currentRank = 0;
+    let previousScore = null;
+
+    filtered.forEach((user) => {
+      const score = user.score_latihan01 ?? 0;
+
+      // Logika Dense Ranking (Skor sama = Peringkat sama)
+      if (score !== previousScore) {
+        currentRank++;
+        previousScore = score;
+      }
+
+      let rankBadge = `<strong>${currentRank}</strong>`;
+      if (currentRank === 1) rankBadge = "🥇 1";
+      else if (currentRank === 2) rankBadge = "🥈 2";
+      else if (currentRank === 3) rankBadge = "🥉 3";
+
+      tableHTML += `
+        <tr>
+          <td>${rankBadge}</td>
+          <td>@${user.username}</td>
+          <td><strong>${score}</strong></td>
+        </tr>
+      `;
+    });
+
+    tableHTML += `</tbody></table>`;
+    modalLeaderboardBody.innerHTML = tableHTML;
+  }
+
+  // Event Listeners Modal & Filter Leaderboard
   if (btnLeaderboardTotal) {
     btnLeaderboardTotal.addEventListener("click", () => {
       if (leaderboardOverlay) {
         leaderboardOverlay.classList.remove("hidden");
         loadRealLeaderboardData();
       }
+    });
+  }
+
+  if (dashboardGradeSelect) {
+    dashboardGradeSelect.addEventListener("change", () => {
+      renderFilteredLeaderboard();
     });
   }
 
