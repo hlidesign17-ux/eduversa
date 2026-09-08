@@ -130,3 +130,42 @@
   background-color: #0f172a;
   color: #818cf8;
 }
+
+/* Styling Card Terkunci & Stempel */
+.card-materi.locked {
+  position: relative;
+  overflow: hidden;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+/* Stempel "SELESAI" Efek Cap */
+.stamp-badge {
+  position: absolute;
+  top: 15px;
+  right: -10px;
+  transform: rotate(12deg);
+  border: 2px dashed #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  font-weight: 800;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+  pointer-events: none;
+  animation: stampPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes stampPop {
+  0% {
+    transform: scale(3) rotate(25deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(12deg);
+    opacity: 1;
+  }
+}

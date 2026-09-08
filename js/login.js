@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
     deviceId =
       typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
-        : "dev_" + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+        : "dev_" +
+          Math.random().toString(36).substring(2, 15) +
+          Date.now().toString(36);
     localStorage.setItem("edualfalah_device_id", deviceId);
   }
 
@@ -108,4 +110,18 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Gagal terhubung ke database. Periksa koneksi internet Anda.");
     }
   });
+  // Toggle Mata Password
+  const toggleBtn = document.getElementById("toggle-password-03");
+  if (toggleBtn && passwordInput) {
+    const eyeOpen = toggleBtn.querySelector(".eye-open");
+    const eyeClosed = toggleBtn.querySelector(".eye-closed");
+
+    toggleBtn.addEventListener("click", () => {
+      const isPassword = passwordInput.getAttribute("type") === "password";
+      passwordInput.setAttribute("type", isPassword ? "text" : "password");
+
+      eyeOpen.classList.toggle("hidden", isPassword);
+      eyeClosed.classList.toggle("hidden", !isPassword);
+    });
+  }
 });
