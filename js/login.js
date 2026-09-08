@@ -76,10 +76,10 @@ document.addEventListener("DOMContentLoaded", () => {
       await supabase.from("users").upsert(
         {
           username: inputUsername,
-          full_name: foundUser.fullname || inputUsername,
-          class_name: foundUser.className || `${calculatedGrade}A`,
+          full_name: foundUser.fullname || null, // Biarkan NULL jika tidak ada di MOCK_USERS agar pop-up muncul
+          class_name: foundUser.className || null,
           grade: calculatedGrade,
-          device_id: deviceId, // Merekam ID Perangkat di Supabase
+          device_id: deviceId,
           is_used: true,
         },
         { onConflict: "username" },

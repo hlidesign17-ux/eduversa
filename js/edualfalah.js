@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentUsername = sessionData.username;
 
   try {
-    // A. Cek apakah device_id ini sudah terikat dengan akun LAIN yang masih ADA di Supabase
+    // A. Cek apakah device_id ini terikat akun LAIN di Supabase
     const { data: boundUser, error: boundErr } = await supabase
       .from("users")
       .select("username")
@@ -48,16 +48,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Cek apakah akun saat ini masih ada di Supabase
+    // B. Cek ketersediaan akun saat ini di Supabase
     const { data: currentUserData, error: userErr } = await supabase
       .from("users")
-      .select("username, full_name, class_name, device_id")
+      .select("username, device_id")
       .eq("username", currentUsername)
       .maybeSingle();
 
     if (userErr) console.error("Error cek user aktif:", userErr);
 
-    // JIKA DATA DI SUPABASE SUDAH DIHAPUS -> Lepas penguncian lokal & Logout
     if (!currentUserData) {
       alert(
         "Akun telah dihapus dari server. Perangkat ini sekarang bebas digunakan untuk akun lain.",
@@ -67,7 +66,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // C. Jika akun ada tapi device_id belum terikat di Supabase, ikatkan sekarang
+    // C. Ikatkan device_id jika belum terikat
     if (!currentUserData.device_id) {
       await supabase
         .from("users")
@@ -78,7 +77,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("Gagal verifikasi penguncian perangkat:", err);
   }
 
-  // Helper untuk membersihkan sesi tanpa menghapus ID perangkat
   function clearLocalSessionExceptDevice() {
     const savedDeviceId = localStorage.getItem("edualfalah_device_id");
     localStorage.clear();
@@ -117,7 +115,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (usernameText) usernameText.textContent = `@${currentUsername}`;
 
   // ==========================================
-  // 4. VERIFIKASI PROFIL USER DARI SUPABASE (MENCEGAH POP-UP BERULANG)
+  // 4. VERIFIKASI NAMA LENGKAP PADA SUPABASE
   // ==========================================
   try {
     const { data: profileData } = await supabase
@@ -126,8 +124,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       .eq("username", currentUsername)
       .maybeSingle();
 
-    if (profileData && profileData.full_name && profileData.class_name) {
-      // Sembunyikan Modal jika data profil sudah lengkap
+    // Validasi: Jika full_name KOSONG, SAMA DENGAN USERNAME, atau belum set KELAS
+    // Maka TAMPILKAN POP-UP ONBOARDING untuk minta Nama Lengkap Asli
+    const needsOnboarding =
+      !profileData ||
+      !profileData.full_name ||
+      profileData.full_name === currentUsername ||
+      !profileData.class_name;
+
+    if (!needsOnboarding) {
+      // Jika data sudah lengkap & valid
       if (onboardingModal) onboardingModal.classList.add("hidden");
 
       if (greetingText)
@@ -139,15 +145,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       renderUserSummary(currentUsername, profileData.full_name);
     } else {
-      // Tampilkan Modal hanya jika data di Supabase belum diisi
+      // Jika belum diisi dengan benar -> TAMPILKAN POP-UP POPUP BISA DISIMPANKAN
       if (onboardingModal) onboardingModal.classList.remove("hidden");
     }
   } catch (err) {
     console.error("Gagal sinkronisasi profil Supabase:", err);
+    if (onboardingModal) onboardingModal.classList.remove("hidden");
   }
 
   // ==========================================
-  // 5. CEK PENGUNCIAN CARD LATIHAN 01 (DENGAN STEMPEL SELESAI)
+  // 5. CEK PENGUNCIAN CARD LATIHAN 01 (STEMPEL SELESAI)
   // ==========================================
   const isLatihanLocked =
     localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
@@ -158,7 +165,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     cardLatihan01.setAttribute("aria-disabled", "true");
     cardLatihan01.setAttribute("title", "Sudah Dikerjakan (Terkunci)");
 
-    // Menggunakan Stempel Badges 'SELESAI' dan Icon Kunci
     cardLatihan01.innerHTML = `
       <div class="stamp-badge">SELESAI</div>
       <svg class="locked-icon" viewBox="0 0 24 24">
@@ -169,7 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ==========================================
-  // 6. FORM SUBMIT ONBOARDING (OPSIONAL JIKA AKUN BARU)
+  // 6. FORM SUBMIT ONBOARDING (UPDATE NAMA ASLI KE SUPABASE)
   // ==========================================
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", async (e) => {
@@ -178,11 +184,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       const fullName = fullNameInput.value.trim();
       const selectedClass = classSelect.value;
 
-      if (!fullName || !selectedClass) return;
+      if (!fullName || !selectedClass) {
+        alert("Harap isi Nama Lengkap dan pilih Kelas!");
+        return;
+      }
 
       const calculatedGrade = parseInt(selectedClass, 10) || 4;
 
       try {
+        // Update Nama Lengkap Asli dan Kelas ke Supabase
         const { error } = await supabase
           .from("users")
           .update({
@@ -200,6 +210,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           return;
         }
 
+        // Simpan ke Cache Lokal
         localStorage.setItem("edualfalah_fullname", fullName);
         localStorage.setItem("edualfalah_class", selectedClass);
 
@@ -207,6 +218,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           greetingText.textContent = `Assalamualaikum, ${fullName}`;
         if (classText) classText.textContent = `Kelas: ${selectedClass}`;
 
+        // Sembunyikan Modal setelah berhasil disimpan
         if (onboardingModal) onboardingModal.classList.add("hidden");
         renderUserSummary(currentUsername, fullName);
       } catch (err) {
