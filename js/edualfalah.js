@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // B. Cek apakah akun saat ini masih ada di Supabase
     const { data: currentUserData, error: userErr } = await supabase
       .from("users")
-      .select("username, device_id")
+      .select("username, full_name, class_name, device_id")
       .eq("username", currentUsername)
       .maybeSingle();
 
@@ -117,7 +117,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (usernameText) usernameText.textContent = `@${currentUsername}`;
 
   // ==========================================
-  // 4. CEK PENGUNCIAN CARD LATIHAN 01
+  // 4. VERIFIKASI PROFIL USER DARI SUPABASE (MENCEGAH POP-UP BERULANG)
+  // ==========================================
+  try {
+    const { data: profileData } = await supabase
+      .from("users")
+      .select("full_name, class_name")
+      .eq("username", currentUsername)
+      .maybeSingle();
+
+    if (profileData && profileData.full_name && profileData.class_name) {
+      // Sembunyikan Modal jika data profil sudah lengkap
+      if (onboardingModal) onboardingModal.classList.add("hidden");
+
+      if (greetingText)
+        greetingText.textContent = `Assalamualaikum, ${profileData.full_name}`;
+      if (classText) classText.textContent = `Kelas: ${profileData.class_name}`;
+
+      localStorage.setItem("edualfalah_fullname", profileData.full_name);
+      localStorage.setItem("edualfalah_class", profileData.class_name);
+
+      renderUserSummary(currentUsername, profileData.full_name);
+    } else {
+      // Tampilkan Modal hanya jika data di Supabase belum diisi
+      if (onboardingModal) onboardingModal.classList.remove("hidden");
+    }
+  } catch (err) {
+    console.error("Gagal sinkronisasi profil Supabase:", err);
+  }
+
+  // ==========================================
+  // 5. CEK PENGUNCIAN CARD LATIHAN 01 (DENGAN STEMPEL SELESAI)
   // ==========================================
   const isLatihanLocked =
     localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
@@ -128,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     cardLatihan01.setAttribute("aria-disabled", "true");
     cardLatihan01.setAttribute("title", "Sudah Dikerjakan (Terkunci)");
 
-    // Tambahkan elemen stamp-badge di samping/atas icon kunci
+    // Menggunakan Stempel Badges 'SELESAI' dan Icon Kunci
     cardLatihan01.innerHTML = `
       <div class="stamp-badge">SELESAI</div>
       <svg class="locked-icon" viewBox="0 0 24 24">
@@ -139,27 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ==========================================
-  // 5. CEK KONDISI POP-UP MODAL ONBOARDING
-  // ==========================================
-  const isMateriCompleted =
-    localStorage.getItem("materi01_completed") === "true";
-
-  if (isMateriCompleted && onboardingModal) {
-    onboardingModal.classList.add("hidden");
-
-    const savedName =
-      localStorage.getItem("edualfalah_fullname") || currentUsername;
-    const savedClass = localStorage.getItem("edualfalah_class") || "4A";
-
-    if (greetingText)
-      greetingText.textContent = `Assalamualaikum, ${savedName}`;
-    if (classText) classText.textContent = `Kelas: ${savedClass}`;
-
-    renderUserSummary(currentUsername, savedName);
-  }
-
-  // ==========================================
-  // 6. FORM SUBMIT ONBOARDING (SIMPAN PROFIL & DEVICE ID)
+  // 6. FORM SUBMIT ONBOARDING (OPSIONAL JIKA AKUN BARU)
   // ==========================================
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", async (e) => {
@@ -173,14 +183,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const calculatedGrade = parseInt(selectedClass, 10) || 4;
 
       try {
-        const { error } = await supabase.from("users").upsert({
-          username: currentUsername,
-          full_name: fullName,
-          class_name: selectedClass,
-          grade: calculatedGrade,
-          device_id: deviceId, // Ikat device_id ke Supabase
-          is_used: true,
-        });
+        const { error } = await supabase
+          .from("users")
+          .update({
+            full_name: fullName,
+            class_name: selectedClass,
+            grade: calculatedGrade,
+            device_id: deviceId,
+            is_used: true,
+          })
+          .eq("username", currentUsername);
 
         if (error) {
           console.error("Gagal menyimpan profil ke Supabase:", error);
