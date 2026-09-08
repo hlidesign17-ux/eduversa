@@ -1,38 +1,95 @@
 import { supabase } from "./supabase-config.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. Ambil Data Session
+  // ==========================================
+  // 1. MANAJEMEN DEVICE ID PERANGKAT
+  // ==========================================
+  let deviceId = localStorage.getItem("edualfalah_device_id");
+  if (!deviceId) {
+    deviceId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : "dev_" +
+          Math.random().toString(36).substring(2, 15) +
+          Date.now().toString(36);
+    localStorage.setItem("edualfalah_device_id", deviceId);
+  }
+
+  // ==========================================
+  // 2. VALIDASI SESSION & PENGUNCIAN PERANGKAT
+  // ==========================================
   const sessionData = JSON.parse(localStorage.getItem("edualfalah_session"));
 
   if (!sessionData || !sessionData.username) {
+    clearLocalSessionExceptDevice();
     window.location.href = "02LoginPage.html";
     return;
   }
 
   const currentUsername = sessionData.username;
 
-  // 2. CEK DAN BUAT AKUN DI SUPABASE JIKA TABEL KOSONG
   try {
-    const { data: userExist, error: userCheckErr } = await supabase
+    // A. Cek apakah device_id ini sudah terikat dengan akun LAIN yang masih ADA di Supabase
+    const { data: boundUser, error: boundErr } = await supabase
       .from("users")
       .select("username")
+      .eq("device_id", deviceId)
+      .neq("username", currentUsername)
+      .maybeSingle();
+
+    if (boundErr) console.error("Error cek device bound:", boundErr);
+
+    if (boundUser) {
+      alert(
+        `Perangkat ini sudah terikat dengan akun @${boundUser.username}. Satu perangkat hanya untuk satu akun!`,
+      );
+      clearLocalSessionExceptDevice();
+      window.location.href = "02LoginPage.html";
+      return;
+    }
+
+    // B. Cek apakah akun saat ini masih ada di Supabase
+    const { data: currentUserData, error: userErr } = await supabase
+      .from("users")
+      .select("username, device_id")
       .eq("username", currentUsername)
       .maybeSingle();
 
-    if (userCheckErr) console.error("Error cek user:", userCheckErr);
+    if (userErr) console.error("Error cek user aktif:", userErr);
 
-    // Jika user belum ada di tabel Supabase (karena baru dihapus), masukkan kembali dasar akunnya
-    if (!userExist) {
-      await supabase.from("users").upsert({
-        username: currentUsername,
-        is_used: false,
-      });
+    // JIKA DATA DI SUPABASE SUDAH DIHAPUS -> Lepas penguncian lokal & Logout
+    if (!currentUserData) {
+      alert(
+        "Akun telah dihapus dari server. Perangkat ini sekarang bebas digunakan untuk akun lain.",
+      );
+      clearLocalSessionExceptDevice();
+      window.location.href = "02LoginPage.html";
+      return;
+    }
+
+    // C. Jika akun ada tapi device_id belum terikat di Supabase, ikatkan sekarang
+    if (!currentUserData.device_id) {
+      await supabase
+        .from("users")
+        .update({ device_id: deviceId })
+        .eq("username", currentUsername);
     }
   } catch (err) {
-    console.error("Gagal sinkronisasi akun dengan Supabase:", err);
+    console.error("Gagal verifikasi penguncian perangkat:", err);
   }
 
-  // 3. DOM Elements
+  // Helper untuk membersihkan sesi tanpa menghapus ID perangkat
+  function clearLocalSessionExceptDevice() {
+    const savedDeviceId = localStorage.getItem("edualfalah_device_id");
+    localStorage.clear();
+    if (savedDeviceId) {
+      localStorage.setItem("edualfalah_device_id", savedDeviceId);
+    }
+  }
+
+  // ==========================================
+  // 3. DOM ELEMENTS
+  // ==========================================
   const onboardingModal = document.getElementById("onboarding-modal");
   const onboardingForm = document.getElementById("onboarding-form");
   const fullNameInput = document.getElementById("full-name-input");
@@ -59,7 +116,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (usernameText) usernameText.textContent = `@${currentUsername}`;
 
+  // ==========================================
   // 4. CEK PENGUNCIAN CARD LATIHAN 01
+  // ==========================================
   const isLatihanLocked =
     localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
 
@@ -76,7 +135,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
+  // ==========================================
   // 5. CEK KONDISI POP-UP MODAL ONBOARDING
+  // ==========================================
   const isMateriCompleted =
     localStorage.getItem("materi01_completed") === "true";
 
@@ -94,7 +155,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderUserSummary(currentUsername, savedName);
   }
 
-  // 6. Handle Form Submit Onboarding (Mengisi Profil Baru ke Supabase)
+  // ==========================================
+  // 6. FORM SUBMIT ONBOARDING (SIMPAN PROFIL & DEVICE ID)
+  // ==========================================
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -104,7 +167,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!fullName || !selectedClass) return;
 
-      // Ekstraksi tingkat kelas (misal "5B" -> 5)
       const calculatedGrade = parseInt(selectedClass, 10) || 4;
 
       try {
@@ -113,6 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           full_name: fullName,
           class_name: selectedClass,
           grade: calculatedGrade,
+          device_id: deviceId, // Ikat device_id ke Supabase
           is_used: true,
         });
 
@@ -151,7 +214,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // ==========================================
   // 7. FETCH & RENDER LEADERBOARD REAL-TIME
+  // ==========================================
   let cachedLeaderboardData = [];
 
   async function loadRealLeaderboardData() {
@@ -186,7 +251,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? dashboardGradeSelect.value
       : "all";
 
-    // Filter data berdasarkan tingkat kelas
     const filtered = cachedLeaderboardData.filter((user) => {
       if (selectedGrade === "all") return true;
       const gradeNum = parseInt(selectedGrade, 10);
@@ -223,7 +287,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     filtered.forEach((user) => {
       const score = user.score_latihan01 ?? 0;
 
-      // Logika Dense Ranking (Skor sama = Peringkat sama)
       if (score !== previousScore) {
         currentRank++;
         previousScore = score;
@@ -247,7 +310,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalLeaderboardBody.innerHTML = tableHTML;
   }
 
-  // Event Listeners Modal & Filter Leaderboard
+  // Event Listeners Leaderboard Modal
   if (btnLeaderboardTotal) {
     btnLeaderboardTotal.addEventListener("click", () => {
       if (leaderboardOverlay) {
