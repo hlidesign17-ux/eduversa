@@ -1,15 +1,38 @@
 import { supabase } from "./supabase-config.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  // 1. Ambil Data Session & Status Penyelesaian Materi
-  const sessionData = JSON.parse(
-    localStorage.getItem("edualfalah_session"),
-  ) || { username: "edualfalah_user" };
-  const isMateriCompleted =
-    localStorage.getItem("materi01_completed") === "true";
+document.addEventListener("DOMContentLoaded", async () => {
+  // 1. Ambil Data Session
+  const sessionData = JSON.parse(localStorage.getItem("edualfalah_session"));
+
+  if (!sessionData || !sessionData.username) {
+    window.location.href = "02LoginPage.html";
+    return;
+  }
+
   const currentUsername = sessionData.username;
 
-  // 2. DOM Elements
+  // 2. VERIFIKASI KEBERADAAN AKUN DI SUPABASE
+  try {
+    const { data: userExist, error: userCheckErr } = await supabase
+      .from("users")
+      .select("username")
+      .eq("username", currentUsername)
+      .maybeSingle();
+
+    // Jika user sudah dihapus di Supabase, hapus cache lokal & tendang ke login
+    if (!userExist) {
+      localStorage.clear();
+      alert(
+        "Sesi Anda telah kedaluwarsa atau akun telah dihapus. Silakan login kembali.",
+      );
+      window.location.href = "02LoginPage.html";
+      return;
+    }
+  } catch (err) {
+    console.error("Gagal verifikasi sesi:", err);
+  }
+
+  // 3. DOM Elements
   const onboardingModal = document.getElementById("onboarding-modal");
   const onboardingForm = document.getElementById("onboarding-form");
   const fullNameInput = document.getElementById("full-name-input");
@@ -22,7 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const userResultDetail = document.getElementById("user-result-detail");
   const cardLatihan01 = document.getElementById("card-latihan-01");
 
-  // DOM Elements Modal Leaderboard Total
   const btnLeaderboardTotal = document.getElementById("btn-leaderboard-total");
   const leaderboardOverlay = document.getElementById(
     "leaderboard-modal-overlay",
@@ -34,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   usernameText.textContent = `@${currentUsername}`;
 
-  // 3. CEK PENGUNCIAN CARD LATIHAN 01
+  // 4. CEK PENGUNCIAN CARD LATIHAN 01
   const isLatihanLocked =
     localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
 
@@ -51,7 +73,10 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  // 4. CEK KONDISI POP-UP MODAL ONBOARDING
+  // 5. CEK KONDISI POP-UP MODAL ONBOARDING
+  const isMateriCompleted =
+    localStorage.getItem("materi01_completed") === "true";
+
   if (isMateriCompleted && onboardingModal) {
     onboardingModal.classList.add("hidden");
 
@@ -65,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderUserSummary(currentUsername, savedName);
   }
 
-  // 5. Handle Form Submit Onboarding (Kunci Profil ke Supabase)
+  // 6. Handle Form Submit Onboarding
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -104,7 +129,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 6. Ringkasan Nilai Latihan User Saja (Tanpa Narasi Peringkat)
   function renderUserSummary(username, fullName) {
     const savedScore =
       parseInt(localStorage.getItem(`latihan01_score_${username}`), 10) || 0;
@@ -118,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 7. POP-UP LEADERBOARD TOTAL (Data Real-time Supabase)
+  // 7. FETCH LEADERBOARD REAL-TIME DENGAN PENANGANAN ERROR DETIL
   async function loadRealLeaderboardData() {
     if (!modalLeaderboardBody) return;
     modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
@@ -130,10 +154,13 @@ document.addEventListener("DOMContentLoaded", () => {
         .not("full_name", "is", null)
         .order("score_latihan01", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error Details:", error.message, error.details);
+        throw error;
+      }
 
       if (!data || data.length === 0) {
-        modalLeaderboardBody.innerHTML = `<p>Belum ada data nilai siswa.</p>`;
+        modalLeaderboardBody.innerHTML = `<p style="padding: 1rem; text-align: center;">Belum ada data siswa yang tersimpan di server.</p>`;
         return;
       }
 
@@ -164,12 +191,16 @@ document.addEventListener("DOMContentLoaded", () => {
       tableHTML += `</tbody></table>`;
       modalLeaderboardBody.innerHTML = tableHTML;
     } catch (err) {
-      console.error("Gagal memuat leaderboard:", err);
-      modalLeaderboardBody.innerHTML = `<p class="error-text">Gagal mengambil data peringkat.</p>`;
+      modalLeaderboardBody.innerHTML = `
+        <div style="padding: 1rem; text-align: center; color: #f43f5e;">
+          <p>Gagal memuat data dari server.</p>
+          <small style="color: #94a3b8;">Pastikan Policy Read (SELECT) pada tabel 'users' di Supabase sudah diaktifkan.</small>
+        </div>
+      `;
     }
   }
 
-  // Event Handler Modal Leaderboard
+  // Event Listeners Modal Leaderboard
   if (btnLeaderboardTotal) {
     btnLeaderboardTotal.addEventListener("click", () => {
       if (leaderboardOverlay) {
@@ -185,7 +216,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Tutup Pop-Up Jika User Menekan Layer Dasar (Overlay 20% Luar Modal)
   if (leaderboardOverlay) {
     leaderboardOverlay.addEventListener("click", (e) => {
       if (e.target === leaderboardOverlay) {
