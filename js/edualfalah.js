@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const currentUsername = sessionData.username;
 
-  // 2. VERIFIKASI KEBERADAAN AKUN DI SUPABASE
+  // 2. CEK DAN BUAT AKUN DI SUPABASE JIKA TABEL KOSONG
   try {
     const { data: userExist, error: userCheckErr } = await supabase
       .from("users")
@@ -19,17 +19,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       .eq("username", currentUsername)
       .maybeSingle();
 
-    // Jika user sudah dihapus di Supabase, hapus cache lokal & tendang ke login
+    if (userCheckErr) console.error("Error cek user:", userCheckErr);
+
+    // Jika user belum ada di tabel Supabase (karena baru dihapus), masukkan kembali dasar akunnya
     if (!userExist) {
-      localStorage.clear();
-      alert(
-        "Sesi Anda telah kedaluwarsa atau akun telah dihapus. Silakan login kembali.",
-      );
-      window.location.href = "02LoginPage.html";
-      return;
+      await supabase.from("users").upsert({
+        username: currentUsername,
+        is_used: false,
+      });
     }
   } catch (err) {
-    console.error("Gagal verifikasi sesi:", err);
+    console.error("Gagal sinkronisasi akun dengan Supabase:", err);
   }
 
   // 3. DOM Elements
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "modal-leaderboard-body",
   );
 
-  usernameText.textContent = `@${currentUsername}`;
+  if (usernameText) usernameText.textContent = `@${currentUsername}`;
 
   // 4. CEK PENGUNCIAN CARD LATIHAN 01
   const isLatihanLocked =
@@ -84,13 +84,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.getItem("edualfalah_fullname") || currentUsername;
     const savedClass = localStorage.getItem("edualfalah_class") || "4A";
 
-    greetingText.textContent = `Assalamualaikum, ${savedName}`;
-    classText.textContent = `Kelas: ${savedClass}`;
+    if (greetingText)
+      greetingText.textContent = `Assalamualaikum, ${savedName}`;
+    if (classText) classText.textContent = `Kelas: ${savedClass}`;
 
     renderUserSummary(currentUsername, savedName);
   }
 
-  // 6. Handle Form Submit Onboarding
+  // 6. Handle Form Submit Onboarding (Mengisi Profil Baru ke Supabase)
   if (onboardingForm) {
     onboardingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -109,7 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
 
         if (error) {
-          console.error("Gagal mengunci akun di Supabase:", error);
+          console.error("Gagal menyimpan profil ke Supabase:", error);
           alert("Gagal menyimpan profil ke server. Periksa koneksi Anda.");
           return;
         }
@@ -117,8 +118,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         localStorage.setItem("edualfalah_fullname", fullName);
         localStorage.setItem("edualfalah_class", selectedClass);
 
-        greetingText.textContent = `Assalamualaikum, ${fullName}`;
-        classText.textContent = `Kelas: ${selectedClass}`;
+        if (greetingText)
+          greetingText.textContent = `Assalamualaikum, ${fullName}`;
+        if (classText) classText.textContent = `Kelas: ${selectedClass}`;
 
         if (onboardingModal) onboardingModal.classList.add("hidden");
         renderUserSummary(currentUsername, fullName);
@@ -142,7 +144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // 7. FETCH LEADERBOARD REAL-TIME DENGAN PENANGANAN ERROR DETIL
+  // 7. FETCH LEADERBOARD REAL-TIME
   async function loadRealLeaderboardData() {
     if (!modalLeaderboardBody) return;
     modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
@@ -154,10 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .not("full_name", "is", null)
         .order("score_latihan01", { ascending: false });
 
-      if (error) {
-        console.error("Supabase Error Details:", error.message, error.details);
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data || data.length === 0) {
         modalLeaderboardBody.innerHTML = `<p style="padding: 1rem; text-align: center;">Belum ada data siswa yang tersimpan di server.</p>`;
@@ -191,10 +190,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       tableHTML += `</tbody></table>`;
       modalLeaderboardBody.innerHTML = tableHTML;
     } catch (err) {
+      console.error("Gagal memuat leaderboard:", err);
       modalLeaderboardBody.innerHTML = `
         <div style="padding: 1rem; text-align: center; color: #f43f5e;">
           <p>Gagal memuat data dari server.</p>
-          <small style="color: #94a3b8;">Pastikan Policy Read (SELECT) pada tabel 'users' di Supabase sudah diaktifkan.</small>
+          <small style="color: #94a3b8;">Periksa kebijakan akses (RLS) pada tabel 'users' di Supabase.</small>
         </div>
       `;
     }
