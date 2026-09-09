@@ -62,10 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // C. CEK DATA EKSISTING DI SUPABASE (Cegah Penimpaan Nama Asli)
+      // C. CEK DATA EKSISTING DI SUPABASE
       const { data: existingUser, error: userErr } = await supabase
         .from("users")
-        .select("username, full_name, class_name, device_id")
+        .select("username, full_name, class_name, grade, device_id")
         .eq("username", inputUsername)
         .maybeSingle();
 
@@ -74,31 +74,26 @@ document.addEventListener("DOMContentLoaded", () => {
       const calculatedGrade =
         parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
 
-      // D. MENYUSUN DATA USER (Aman dari Not-Null Constraint Error)
+      // D. MENYUSUN DATA USER (Selalu sertakan full_name & class_name agar tidak NULL saat UPSERT)
       const userDataToSave = {
         username: inputUsername,
         device_id: deviceId,
         is_used: true,
+        full_name:
+          existingUser &&
+          existingUser.full_name &&
+          existingUser.full_name !== inputUsername
+            ? existingUser.full_name
+            : foundUser.fullname || "",
+        class_name:
+          existingUser && existingUser.class_name
+            ? existingUser.class_name
+            : foundUser.className || "",
+        grade:
+          existingUser && existingUser.grade
+            ? existingUser.grade
+            : calculatedGrade,
       };
-
-      // Gunakan string kosong "" pengganti null untuk mencegah error constraint 23502
-      if (
-        !existingUser ||
-        !existingUser.full_name ||
-        existingUser.full_name.trim() === "" ||
-        existingUser.full_name === inputUsername
-      ) {
-        userDataToSave.full_name = foundUser.fullname || "";
-      }
-
-      if (
-        !existingUser ||
-        !existingUser.class_name ||
-        existingUser.class_name.trim() === ""
-      ) {
-        userDataToSave.class_name = foundUser.className || "";
-        userDataToSave.grade = calculatedGrade;
-      }
 
       // E. EKSEKUSI UPSERT KE SUPABASE DENGAN AWAIT
       const { error: upsertErr } = await supabase
@@ -121,8 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
         "edualfalah_session",
         JSON.stringify({
           username: foundUser.username,
-          className: foundUser.className,
-          grade: calculatedGrade,
+          className: userDataToSave.class_name,
+          grade: userDataToSave.grade,
           isLoggedIn: true,
         }),
       );
