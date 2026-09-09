@@ -46,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // B. CEK PENGUNCIAN PERANGKAT DARI SUPABASE
-      // Pastikan device ini tidak sedang dikunci oleh akun lain
       const { data: boundUser, error: boundErr } = await supabase
         .from("users")
         .select("username")
@@ -75,42 +74,33 @@ document.addEventListener("DOMContentLoaded", () => {
       const calculatedGrade =
         parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
 
-      // D. MENYUSUN DATA USER (Cegah error Not-Null Constraint)
+      // D. MENYUSUN DATA USER (Aman dari Not-Null Constraint Error)
       const userDataToSave = {
         username: inputUsername,
         device_id: deviceId,
         is_used: true,
       };
 
-      // Gunakan string kosong "" sebagai gantinya NULL jika belum ada nama
+      // Gunakan string kosong "" pengganti null untuk mencegah error constraint 23502
       if (
         !existingUser ||
         !existingUser.full_name ||
+        existingUser.full_name.trim() === "" ||
         existingUser.full_name === inputUsername
       ) {
         userDataToSave.full_name = foundUser.fullname || "";
       }
 
-      if (!existingUser || !existingUser.class_name) {
+      if (
+        !existingUser ||
+        !existingUser.class_name ||
+        existingUser.class_name.trim() === ""
+      ) {
         userDataToSave.class_name = foundUser.className || "";
         userDataToSave.grade = calculatedGrade;
       }
 
-      // Hanya set data default jika user belum pernah memiliki full_name/class_name di DB
-      if (
-        !existingUser ||
-        !existingUser.full_name ||
-        existingUser.full_name === inputUsername
-      ) {
-        userDataToSave.full_name = foundUser.fullname || null;
-      }
-
-      if (!existingUser || !existingUser.class_name) {
-        userDataToSave.class_name = foundUser.className || null;
-        userDataToSave.grade = calculatedGrade;
-      }
-
-      // E. ESEKUSI UPSERT KE SUPABASE DENGAN AWAIT
+      // E. EKSEKUSI UPSERT KE SUPABASE DENGAN AWAIT
       const { error: upsertErr } = await supabase
         .from("users")
         .upsert(userDataToSave, { onConflict: "username" });
@@ -137,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }),
       );
 
-      // G. REDIRECT DENGAN JEDA SINGKAT (Mencegah Race Condition/Alert Penendangan)
+      // G. REDIRECT DENGAN JEDA SINGKAT
       setTimeout(() => {
         window.location.href = "05edualfalah2.html";
       }, 100);
