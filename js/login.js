@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const calculatedGrade =
         parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
 
-      // D. MENYUSUN DATA USER (Selalu sertakan full_name & class_name agar tidak NULL saat UPSERT)
+      // D. MENYUSUN DATA USER
       const userDataToSave = {
         username: inputUsername,
         device_id: deviceId,
@@ -106,12 +106,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // F. BERSIHKAN LOCALSTORAGE LAMA & SIMPAN SESI BARU
-      const currentDeviceId = localStorage.getItem("edualfalah_device_id");
-      localStorage.clear();
-      localStorage.setItem("edualfalah_device_id", currentDeviceId);
+      // F. BERSIHKAN SESI LAMA SECARA SELEKTIF (JANGAN REMOVE KUNCI LATIHAN & SKOR)
+      localStorage.removeItem("edualfalah_session");
+      localStorage.removeItem("edualfalah_fullname");
+      localStorage.removeItem("edualfalah_class");
+
       localStorage.setItem("edualfalah_device_owner", inputUsername);
 
+      // Simpan Sesi Baru
       localStorage.setItem(
         "edualfalah_session",
         JSON.stringify({
