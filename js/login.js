@@ -75,12 +75,26 @@ document.addEventListener("DOMContentLoaded", () => {
       const calculatedGrade =
         parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
 
-      // D. MENYUSUN DATA USER (Tidak Menimpa Nama yang Sudah Diisi di Pop-up)
+      // D. MENYUSUN DATA USER (Cegah error Not-Null Constraint)
       const userDataToSave = {
         username: inputUsername,
         device_id: deviceId,
         is_used: true,
       };
+
+      // Gunakan string kosong "" sebagai gantinya NULL jika belum ada nama
+      if (
+        !existingUser ||
+        !existingUser.full_name ||
+        existingUser.full_name === inputUsername
+      ) {
+        userDataToSave.full_name = foundUser.fullname || "";
+      }
+
+      if (!existingUser || !existingUser.class_name) {
+        userDataToSave.class_name = foundUser.className || "";
+        userDataToSave.grade = calculatedGrade;
+      }
 
       // Hanya set data default jika user belum pernah memiliki full_name/class_name di DB
       if (

@@ -58,10 +58,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (userErr) console.error("Error cek user aktif:", userErr);
 
     // JIKA DATA BELUM MASUK / SINKRONISASI TERLAMBAT -> LAKUKAN AUTO-REGISTER DARURAT
+    // Menggunakan string kosong "" agar tidak melanggar NOT NULL constraint Supabase
     if (!currentUserData) {
       const { error: insertErr } = await supabase.from("users").upsert(
         {
           username: currentUsername,
+          full_name: "",
+          class_name: "",
           device_id: deviceId,
           is_used: true,
         },
@@ -134,13 +137,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       .eq("username", currentUsername)
       .maybeSingle();
 
-    // Validasi: Jika full_name KOSONG, SAMA DENGAN USERNAME, atau belum set KELAS
+    // Validasi: Jika full_name KOSONG (""), SAMA DENGAN USERNAME, atau belum set KELAS
     // Maka TAMPILKAN POP-UP ONBOARDING untuk meminta Nama Lengkap Asli
     const needsOnboarding =
       !profileData ||
       !profileData.full_name ||
+      profileData.full_name.trim() === "" ||
       profileData.full_name === currentUsername ||
-      !profileData.class_name;
+      !profileData.class_name ||
+      profileData.class_name.trim() === "";
 
     if (!needsOnboarding) {
       // Jika data sudah lengkap & valid
