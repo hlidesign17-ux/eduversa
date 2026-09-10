@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const currentUsername = sessionData.username;
 
+  // Variabel untuk menyimpan profil & skor dari Supabase
+  let currentUserData = null;
+
   try {
     // A. Cek apakah device_id ini terikat akun LAIN di Supabase
     const { data: boundUser, error: boundErr } = await supabase
@@ -48,22 +51,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Cek ketersediaan akun saat ini di Supabase
-    let { data: currentUserData, error: userErr } = await supabase
+    // B. Cek ketersediaan akun saat ini & ambil data skornya
+    const { data: userData, error: userErr } = await supabase
       .from("users")
-      .select("username, device_id")
+      .select("username, full_name, class_name, device_id, score_latihan01")
       .eq("username", currentUsername)
       .maybeSingle();
 
     if (userErr) console.error("Error cek user aktif:", userErr);
 
-    if (!currentUserData) {
-      alert("Akun tidak ditemukan atau telah dihapus dari server.");
+    if (!userData) {
+      alert(
+        "Akun tidak ditemukan di server atau telah dihapus. Mengalihkan ke login...",
+      );
       clearLocalSessionExceptDevice();
       window.location.href = "02LoginPage.html";
       return;
-    } else if (!currentUserData.device_id) {
-      // Ikatkan device_id jika belum terikat di Supabase
+    }
+
+    currentUserData = userData;
+
+    // Ikatkan device_id jika belum terikat di Supabase
+    if (!currentUserData.device_id) {
       await supabase
         .from("users")
         .update({ device_id: deviceId })
@@ -109,65 +118,83 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 4. SYNC & TAMPILKAN PROFIL USER
   // ==========================================
   let userFullName =
-    localStorage.getItem("edualfalah_fullname") || currentUsername;
-  let userClass = localStorage.getItem("edualfalah_class") || "-";
+    currentUserData?.full_name ||
+    localStorage.getItem("edualfalah_fullname") ||
+    currentUsername;
+  let userClass =
+    currentUserData?.class_name ||
+    localStorage.getItem("edualfalah_class") ||
+    "-";
 
-  try {
-    const { data: profileData } = await supabase
-      .from("users")
-      .select("full_name, class_name")
-      .eq("username", currentUsername)
-      .maybeSingle();
-
-    if (profileData) {
-      if (profileData.full_name) {
-        userFullName = profileData.full_name;
-        localStorage.setItem("edualfalah_fullname", userFullName);
-      }
-      if (profileData.class_name) {
-        userClass = profileData.class_name;
-        localStorage.setItem("edualfalah_class", userClass);
-      }
-    }
-  } catch (err) {
-    console.error("Gagal ambil profil Supabase:", err);
-  }
+  if (currentUserData?.full_name)
+    localStorage.setItem("edualfalah_fullname", userFullName);
+  if (currentUserData?.class_name)
+    localStorage.setItem("edualfalah_class", userClass);
 
   if (greetingText)
     greetingText.textContent = `Assalamualaikum, ${userFullName}`;
   if (classText) classText.textContent = `Kelas: ${userClass}`;
 
-  renderUserSummary(currentUsername, userFullName);
-
   // ==========================================
-  // 5. CEK PENGUNCIAN CARD LATIHAN 01
+  // 5. PENANGANAN STATUS LATIHAN & PENGUNCIAN
   // ==========================================
-  const isLatihanLocked =
-    localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
+  // Ambil nilai score dari Supabase. Jika null/undefined, berarti BELUM PERNAH MENGERJAKAN
+  const scoreFromDb = currentUserData ? currentUserData.score_latihan01 : null;
 
-  if (isLatihanLocked && cardLatihan01) {
-    cardLatihan01.classList.add("locked");
-    cardLatihan01.removeAttribute("href");
-    cardLatihan01.setAttribute("aria-disabled", "true");
-    cardLatihan01.setAttribute("title", "Sudah Dikerjakan (Terkunci)");
+  if (scoreFromDb === null || scoreFromDb === undefined) {
+    // -----------------------------------------------------------------
+    // KONDISI A: BELUM MENGERJAKAN (Status Bersih/Baru)
+    // -----------------------------------------------------------------
+    // Bersihkan penanda kunci lokal lama jika ada
+    localStorage.removeItem(`latihan01_locked_${currentUsername}`);
+    localStorage.removeItem(`latihan01_score_${currentUsername}`);
 
-    cardLatihan01.innerHTML = `
-      <div class="stamp-badge">SELESAI</div>
-      <svg class="locked-icon" viewBox="0 0 24 24">
-        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-      </svg>
-      <span>latihan01</span>
-    `;
-  }
+    // Tampilan tombol latihan tetep terbuka / aktif
+    if (cardLatihan01) {
+      cardLatihan01.classList.remove("locked");
+      cardLatihan01.setAttribute("href", "06Latihan01.html");
+      cardLatihan01.removeAttribute("aria-disabled");
+      cardLatihan01.removeAttribute("title");
+      cardLatihan01.innerHTML = `<span>latihan01</span>`;
+    }
 
-  function renderUserSummary(username, fullName) {
-    const savedScore =
-      parseInt(localStorage.getItem(`latihan01_score_${username}`), 10) || 0;
-
+    // Tampilan di bagian ringkasan hasil latihan
     if (userResultDetail) {
       userResultDetail.innerHTML = `
         <p class="result-text">
-          Ananda <strong>${fullName}</strong> (<code>@${username}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${savedScore}</strong>.
+          Ananda <strong>${userFullName}</strong> belum mengerjakan <strong>latihan01</strong>. Silakan klik modul latihan di atas untuk mulai mengerjakan.
+        </p>
+      `;
+    }
+  } else {
+    // -----------------------------------------------------------------
+    // KONDISI B: SUDAH MENGERJAKAN (Nilai 0, 10, 80, 100, dll)
+    // -----------------------------------------------------------------
+    // Simpan sync ke localstorage
+    localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
+    localStorage.setItem(`latihan01_score_${currentUsername}`, scoreFromDb);
+
+    // Kunci tombol latihan
+    if (cardLatihan01) {
+      cardLatihan01.classList.add("locked");
+      cardLatihan01.removeAttribute("href");
+      cardLatihan01.setAttribute("aria-disabled", "true");
+      cardLatihan01.setAttribute("title", "Sudah Dikerjakan (Terkunci)");
+
+      cardLatihan01.innerHTML = `
+        <div class="stamp-badge">SELESAI</div>
+        <svg class="locked-icon" viewBox="0 0 24 24">
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+        </svg>
+        <span>latihan01</span>
+      `;
+    }
+
+    // Tampilkan hasil nilai
+    if (userResultDetail) {
+      userResultDetail.innerHTML = `
+        <p class="result-text">
+          Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${scoreFromDb}</strong>.
         </p>
       `;
     }
@@ -183,9 +210,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
 
     try {
+      // Hanya ambil user yang score_latihan01 nya TIDAK NULL (sudah mengerjakan)
       const { data, error } = await supabase
         .from("users")
         .select("username, class_name, grade, score_latihan01")
+        .not("score_latihan01", "is", null)
         .order("score_latihan01", { ascending: false });
 
       if (error) throw error;
@@ -244,7 +273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let previousScore = null;
 
     filtered.forEach((user) => {
-      const score = user.score_latihan01 ?? 0;
+      const score = user.score_latihan01;
 
       if (score !== previousScore) {
         currentRank++;
