@@ -23,11 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
 
     try {
-      // 2. Ambil Data Real-time dari Supabase
+      // 2. Ambil Data Real-time dari Supabase (Hanya siswa yang SUDAH MENGERJAKAN / BUKAN NULL)
       const { data, error } = await supabase
         .from("users")
         .select("username, class_name, grade, score_latihan01")
-        .order("score_latihan01", { ascending: false });
+        .not("score_latihan01", "is", null) // Filter out nilai NULL
+        .order("score_latihan01", { ascending: false, nullsFirst: false });
 
       if (error) {
         console.error("Supabase Error:", error);
@@ -41,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 3. Filter berdasarkan 'grade' atau awalan 'class_name' (misal "6C" -> kelas 6)
+      // 3. Filter berdasarkan 'grade' atau awalan 'class_name'
       const filteredData = (data || []).filter((item) => {
         if (item.grade === grade) return true;
         if (item.class_name && item.class_name.startsWith(grade.toString()))
@@ -61,13 +62,13 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 5. HITUNG PERINGKAT DENGAN DENSE RANKING (Skor sama = Peringkat sama)
+      // 5. HITUNG PERINGKAT DENGAN DENSE RANKING
       let currentRank = 0;
       let previousScore = null;
 
       leaderboardBody.innerHTML = filteredData
         .map((item) => {
-          const score = item.score_latihan01 || 0;
+          const score = item.score_latihan01;
 
           // Jika skor berbeda dengan skor sebelumnya, tingkatkan nomor peringkat
           if (score !== previousScore) {

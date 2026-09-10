@@ -1,18 +1,32 @@
 import { DATA_SOAL } from "./soal-data.js";
 import { supabase } from "./supabase-config.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  // 1. Cek Apakah Latihan Sudah Pernah Dikerjakan (Locked)
+document.addEventListener("DOMContentLoaded", async () => {
+  // 1. Ambil Sesi User
   const sessionData =
     JSON.parse(localStorage.getItem("edualfalah_session")) || {};
   const currentUsername = sessionData.username || "edualfalah_user";
-  const isLocked =
-    localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
 
-  if (isLocked) {
-    alert("Anda sudah menyelesaikan latihan ini. Latihan telah terkunci.");
-    window.location.href = "05edualfalah2.html";
-    return;
+  // Cek Status Terkunci dari Supabase & Local Storage
+  try {
+    const { data: userDb } = await supabase
+      .from("users")
+      .select("score_latihan01")
+      .eq("username", currentUsername)
+      .maybeSingle();
+
+    const dbScore = userDb ? userDb.score_latihan01 : null;
+    const localLocked =
+      localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
+
+    // Jika sudah pernah ada nilai di Supabase atau Local Storage sudah terkunci
+    if ((dbScore !== null && dbScore !== undefined) || localLocked) {
+      alert("Anda sudah menyelesaikan latihan ini. Latihan telah terkunci.");
+      window.location.href = "05edualfalah2.html";
+      return;
+    }
+  } catch (err) {
+    console.error("Gagal memeriksa status pengerjaan:", err);
   }
 
   // 2. DOM Elements
@@ -21,10 +35,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const timerDisplay = document.getElementById("timer-display");
   const totalQuestionsText = document.getElementById("total-questions-text");
 
-  totalQuestionsText.textContent = `Total Soal: ${DATA_SOAL.length} Butir`;
+  if (totalQuestionsText) {
+    totalQuestionsText.textContent = `Total Soal: ${DATA_SOAL.length} Butir`;
+  }
 
   // 3. Render Soal secara Dinamis
   function renderQuestions() {
+    if (!questionsWrapper) return;
     questionsWrapper.innerHTML = "";
     const optionLabels = ["A", "B", "C", "D"];
 
@@ -66,35 +83,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderQuestions();
 
-  // 4. Timer Countdown (Contoh: 15 Menit)
-  let timeInSeconds = 15 * 60;
-  const timerInterval = setInterval(() => {
-    timeInSeconds--;
+  // 4. Timer Countdown Safe Guard
+  let timeInSeconds = 15 * 60; // 15 Menit
+  let timerInterval = null;
 
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = timeInSeconds % 60;
-    timerDisplay.textContent = `${minutes < 10 ? "0" : ""}${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  if (timerDisplay) {
+    timerInterval = setInterval(() => {
+      timeInSeconds--;
 
-    if (timeInSeconds <= 0) {
-      clearInterval(timerInterval);
-      alert(
-        "Waktu latihan habis! Sistem akan mengirim jawaban Anda secara otomatis.",
-      );
-      submitQuiz();
-    }
-  }, 1000);
+      const minutes = Math.floor(timeInSeconds / 60);
+      const seconds = timeInSeconds % 60;
+      timerDisplay.textContent = `${minutes < 10 ? "0" : ""}${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 
-  // 5. Handle Submit & Kalkulasi Skor
-  quizForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (confirm("Apakah Anda yakin ingin menyelesaikan latihan ini?")) {
-      clearInterval(timerInterval);
-      submitQuiz();
-    }
+      if (timeInSeconds <= 0) {
+        clearInterval(timerInterval);
+        alert(
+          "Waktu latihan habis! Sistem akan mengirim jawaban Anda secara otomatis.",
+        );
+        submitQuiz();
+      }
+    }, 1000);
+  }
+
+  // Hentikan timer jika user berpindah halaman sebelum submit
+  window.addEventListener("beforeunload", () => {
+    if (timerInterval) clearInterval(timerInterval);
   });
 
-  // Di dalam fungsi submitQuiz() pada file js/latihan.js
+  // 5. Handle Submit & Kalkulasi Skor
+  if (quizForm) {
+    quizForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (confirm("Apakah Anda yakin ingin menyelesaikan latihan ini?")) {
+        if (timerInterval) clearInterval(timerInterval);
+        submitQuiz();
+      }
+    });
+  }
 
+  // 6. Eksekusi Submit Quiz
   async function submitQuiz() {
     let correctCount = 0;
     const totalSoal = DATA_SOAL.length;
@@ -113,14 +140,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const finalScore = Math.round((correctCount / totalSoal) * 100);
 
-    // 1. Simpan skor & status latihan terkunci
+    // 1. Simpan skor & status latihan terkunci ke Local Storage
     localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
     localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
-
-    // 2. KUNCI UTAMA: Tandai materi/latihan selesai agar pop-up onboarding di-skip saat masuk 05edualfalah2.html
     localStorage.setItem("materi01_completed", "true");
 
-    // 3. Simpan ke Supabase
+    // 2. Simpan ke Supabase
     try {
       await supabase
         .from("users")

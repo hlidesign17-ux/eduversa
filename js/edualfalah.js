@@ -1,3 +1,4 @@
+// js/edualfalah.js
 import { supabase } from "./supabase-config.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -27,12 +28,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const currentUsername = sessionData.username;
-
-  // Variabel untuk menyimpan profil & skor dari Supabase
   let currentUserData = null;
 
   try {
-    // A. Cek apakah device_id ini terikat akun LAIN di Supabase
+    // A. Cek apakah device_id terikat akun lain
     const { data: boundUser, error: boundErr } = await supabase
       .from("users")
       .select("username")
@@ -51,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Cek ketersediaan akun saat ini & ambil data skornya
+    // B. Ambil data profil & skor dari Supabase
     const { data: userData, error: userErr } = await supabase
       .from("users")
       .select("username, full_name, class_name, device_id, score_latihan01")
@@ -71,7 +70,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     currentUserData = userData;
 
-    // Ikatkan device_id jika belum terikat di Supabase
+    // Ikat device_id jika belum terikat
     if (!currentUserData.device_id) {
       await supabase
         .from("users")
@@ -136,23 +135,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (classText) classText.textContent = `Kelas: ${userClass}`;
 
   // ==========================================
-  // 5. PENANGANAN STATUS LATIHAN & PENGUNCIAN
+  // 5. PENANGANAN STATUS LATIHAN (PRIORITAS SUPABASE)
   // ==========================================
-  // Ambil nilai score asli dari Supabase (jangan langsung gunakan || 0)
   const scoreFromDb = currentUserData ? currentUserData.score_latihan01 : null;
-  const localScoreRaw = localStorage.getItem(
-    `latihan01_score_${currentUsername}`,
-  );
 
-  // Tentukan apakah user BENAR-BENAR sudah mengerjakan
-  // Hanya dianggap sudah pengerjaan jika nilainya BUKAN null / BUKAN undefined
-  const hasFinished =
-    (scoreFromDb !== null && scoreFromDb !== undefined) ||
-    (localScoreRaw !== null && localScoreRaw !== undefined);
+  // PENENTUAN STATUS AKURAT:
+  // Jika di Supabase NULL -> Berarti BELUM mengerjakan (abaikan cache lokal)
+  const hasFinished = scoreFromDb !== null && scoreFromDb !== undefined;
 
   if (!hasFinished) {
     // -----------------------------------------------------------------
-    // KONDISI A: BELUM MENGERJAKAN (Pengguna Baru / Data Reset)
+    // KONDISI A: BELUM MENGERJAKAN (Hapus Cache Palsu / Reset Local)
     // -----------------------------------------------------------------
     localStorage.removeItem(`latihan01_locked_${currentUsername}`);
     localStorage.removeItem(`latihan01_score_${currentUsername}`);
@@ -176,12 +169,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   } else {
     // -----------------------------------------------------------------
-    // KONDISI B: SUDAH MENGERJAKAN (Termasuk jika dapat nilai 0 asli)
+    // KONDISI B: SUDAH MENGERJAKAN (Nilai Murni dari Database)
     // -----------------------------------------------------------------
-    const finalScore =
-      scoreFromDb !== null && scoreFromDb !== undefined
-        ? scoreFromDb
-        : parseInt(localScoreRaw, 10);
+    const finalScore = scoreFromDb;
 
     localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
     localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
@@ -222,7 +212,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
 
     try {
-      // Hanya ambil user yang score_latihan01 nya TIDAK NULL (sudah mengerjakan)
+      // Ambil pengguna yang sudah memiliki skor
       const { data, error } = await supabase
         .from("users")
         .select("username, class_name, grade, score_latihan01")

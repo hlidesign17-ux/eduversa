@@ -101,12 +101,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // C. CEK EXISTENSI AKUN DI DATABASE SUPABASE
       const { data: existingUser } = await supabase
         .from("users")
-        .select("username")
+        .select("username, score_latihan01")
         .eq("username", inputUsername)
         .maybeSingle();
 
       if (existingUser) {
-        // D1. JIKA AKUN SUDAH ADA -> UPDATE PROFIL SAJA (TANPA MENYENTUH/MERESET SKOR LATIHAN)
+        // D1. JIKA AKUN SUDAH ADA -> UPDATE PROFIL SAJA
         const { error: updateErr } = await supabase
           .from("users")
           .update({
@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
       } else {
-        // D2. JIKA AKUN BARU -> INSERT AKUN BARU (MENGGUNAKAN DEFAULT NULL PADA SCORE)
+        // D2. JIKA AKUN BARU -> INSERT AKUN BARU
         const { error: insertErr } = await supabase.from("users").insert({
           username: inputUsername,
           device_id: deviceId,
@@ -147,6 +147,18 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem("edualfalah_device_owner", inputUsername);
       localStorage.setItem("edualfalah_fullname", inputFullName);
       localStorage.setItem("edualfalah_class", inputClass);
+
+      // E1. SINKRONISASI STATUS LATIHAN DENGAN SUPABASE (PEMBERSIH CACHE PALSU)
+      const userScore = existingUser ? existingUser.score_latihan01 : null;
+
+      if (userScore !== null && userScore !== undefined) {
+        localStorage.setItem(`latihan01_locked_${inputUsername}`, "true");
+        localStorage.setItem(`latihan01_score_${inputUsername}`, userScore);
+      } else {
+        // Jika di DB nilainya NULL (belum pernah mengerjakan), hapus cache bekas yang salah!
+        localStorage.removeItem(`latihan01_locked_${inputUsername}`);
+        localStorage.removeItem(`latihan01_score_${inputUsername}`);
+      }
 
       localStorage.setItem(
         "edualfalah_session",

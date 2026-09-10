@@ -1,4 +1,4 @@
-// leaderboard mock data
+// leaderboard mock data bisa sebagai backup data ketika Supabase tidak tersedia atau untuk pengujian lokal
 
 export const MOCK_LEADERBOARD = [
   // Kelas 4
