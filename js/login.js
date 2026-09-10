@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!loginForm) return;
 
-  // Auto-fill Nama Lengkap & Kelas dari Supabase/Cache ketika username diisi
+  // Auto-fill & Lock Nama Lengkap & Kelas dari Supabase ketika username diisi
   if (usernameInput) {
     usernameInput.addEventListener("blur", async () => {
       const inputUsername = usernameInput.value.trim().toLowerCase();
@@ -26,10 +26,19 @@ document.addEventListener("DOMContentLoaded", () => {
           .maybeSingle();
 
         if (userDb) {
-          if (fullnameInput && userDb.full_name)
+          // JIKA USER SUDAH ADA: Isikan data asli dan KUNCI input agar tidak bisa diganti
+          if (fullnameInput && userDb.full_name) {
             fullnameInput.value = userDb.full_name;
-          if (classSelect && userDb.class_name)
+            fullnameInput.disabled = true;
+          }
+          if (classSelect && userDb.class_name) {
             classSelect.value = userDb.class_name;
+            classSelect.disabled = true;
+          }
+        } else {
+          // JIKA USER BARU: Buka kunci input agar bisa diisi
+          if (fullnameInput) fullnameInput.disabled = false;
+          if (classSelect) classSelect.disabled = false;
         }
       } catch (err) {
         console.error("Gagal auto-fill data user:", err);
@@ -62,11 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputFullName = fullnameInput ? fullnameInput.value.trim() : "";
     const inputClass = classSelect ? classSelect.value : "";
 
-    if (!inputFullName || !inputClass) {
-      alert("Harap lengkapi Nama Lengkap dan Kelas!");
-      return;
-    }
-
     // A. Validasi Kredensial Lokal (MOCK_USERS)
     const foundUser = MOCK_USERS.find(
       (user) =>
@@ -96,25 +100,31 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const calculatedGrade = parseInt(inputClass, 10) || 4;
-
       // C. CEK EXISTENSI AKUN DI DATABASE SUPABASE
       const { data: existingUser } = await supabase
         .from("users")
-        .select("username, score_latihan01")
+        .select(
+          "username, full_name, class_name, grade, score_latihan01, is_latihan01_submitted",
+        )
         .eq("username", inputUsername)
         .maybeSingle();
 
+      let finalFullName = "";
+      let finalClass = "";
+      let finalGrade = 4;
+
       if (existingUser) {
-        // D1. JIKA AKUN SUDAH ADA -> UPDATE PROFIL SAJA
+        // D1. JIKA AKUN SUDAH ADA -> GUNAKAN DATA ASLI DARI SUPABASE (Abaikan inputan baru jika ada)
+        finalFullName = existingUser.full_name;
+        finalClass = existingUser.class_name;
+        finalGrade = existingUser.grade || parseInt(finalClass, 10) || 4;
+
+        // Cukup update device_id dan status aktif
         const { error: updateErr } = await supabase
           .from("users")
           .update({
             device_id: deviceId,
             is_used: true,
-            full_name: inputFullName,
-            class_name: inputClass,
-            grade: calculatedGrade,
           })
           .eq("username", inputUsername);
 
@@ -124,14 +134,27 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
       } else {
-        // D2. JIKA AKUN BARU -> INSERT AKUN BARU
+        // D2. JIKA AKUN BARU -> REKAP INPUT & INSERT AKUN BARU
+        if (!inputFullName || !inputClass) {
+          alert(
+            "Harap lengkapi Nama Lengkap dan Kelas untuk pendaftaran awal!",
+          );
+          return;
+        }
+
+        finalFullName = inputFullName;
+        finalClass = inputClass;
+        finalGrade = parseInt(inputClass, 10) || 4;
+
         const { error: insertErr } = await supabase.from("users").insert({
           username: inputUsername,
           device_id: deviceId,
           is_used: true,
-          full_name: inputFullName,
-          class_name: inputClass,
-          grade: calculatedGrade,
+          full_name: finalFullName,
+          class_name: finalClass,
+          grade: finalGrade,
+          is_latihan01_submitted: false,
+          score_latihan01: null,
         });
 
         if (insertErr) {
@@ -141,21 +164,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // E. BERSIHKAN SESI LAMA & SIMPAN SESI BARU
+      // E. BERSIHKAN SESI LAMA & SIMPAN SESI BARU DENGAN DATA VALID
       localStorage.removeItem("edualfalah_session");
 
       localStorage.setItem("edualfalah_device_owner", inputUsername);
-      localStorage.setItem("edualfalah_fullname", inputFullName);
-      localStorage.setItem("edualfalah_class", inputClass);
+      localStorage.setItem("edualfalah_fullname", finalFullName);
+      localStorage.setItem("edualfalah_class", finalClass);
 
-      // E1. SINKRONISASI STATUS LATIHAN DENGAN SUPABASE (PEMBERSIH CACHE PALSU)
-      const userScore = existingUser ? existingUser.score_latihan01 : null;
+      // E1. SINKRONISASI STATUS LATIHAN VIA BOOLEAN FLAG & SCORE
+      const isSubmitted = existingUser
+        ? Boolean(existingUser.is_latihan01_submitted)
+        : false;
+      const userScore =
+        existingUser && existingUser.score_latihan01 !== null
+          ? existingUser.score_latihan01
+          : 0;
 
-      if (userScore !== null && userScore !== undefined) {
+      if (isSubmitted) {
         localStorage.setItem(`latihan01_locked_${inputUsername}`, "true");
         localStorage.setItem(`latihan01_score_${inputUsername}`, userScore);
       } else {
-        // Jika di DB nilainya NULL (belum pernah mengerjakan), hapus cache bekas yang salah!
+        // Jika belum mengerjakan, hapus cache status latihan
         localStorage.removeItem(`latihan01_locked_${inputUsername}`);
         localStorage.removeItem(`latihan01_score_${inputUsername}`);
       }
@@ -164,9 +193,9 @@ document.addEventListener("DOMContentLoaded", () => {
         "edualfalah_session",
         JSON.stringify({
           username: foundUser.username,
-          fullName: inputFullName,
-          className: inputClass,
-          grade: calculatedGrade,
+          fullName: finalFullName,
+          className: finalClass,
+          grade: finalGrade,
           isLoggedIn: true,
         }),
       );
@@ -193,8 +222,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const isPassword = passwordInput.getAttribute("type") === "password";
       passwordInput.setAttribute("type", isPassword ? "text" : "password");
 
-      eyeOpen.classList.toggle("hidden", isPassword);
-      eyeClosed.classList.toggle("hidden", !isPassword);
+      if (eyeOpen) eyeOpen.classList.toggle("hidden", isPassword);
+      if (eyeClosed) eyeClosed.classList.toggle("hidden", !isPassword);
     });
   }
 });
