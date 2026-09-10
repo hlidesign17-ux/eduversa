@@ -138,18 +138,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================================
   // 5. PENANGANAN STATUS LATIHAN & PENGUNCIAN
   // ==========================================
-  // Ambil nilai score dari Supabase. Jika null/undefined, berarti BELUM PERNAH MENGERJAKAN
+  // Ambil nilai score asli dari Supabase (jangan langsung gunakan || 0)
   const scoreFromDb = currentUserData ? currentUserData.score_latihan01 : null;
+  const localScoreRaw = localStorage.getItem(
+    `latihan01_score_${currentUsername}`,
+  );
 
-  if (scoreFromDb === null || scoreFromDb === undefined) {
+  // Tentukan apakah user BENAR-BENAR sudah mengerjakan
+  // Hanya dianggap sudah pengerjaan jika nilainya BUKAN null / BUKAN undefined
+  const hasFinished =
+    (scoreFromDb !== null && scoreFromDb !== undefined) ||
+    (localScoreRaw !== null && localScoreRaw !== undefined);
+
+  if (!hasFinished) {
     // -----------------------------------------------------------------
-    // KONDISI A: BELUM MENGERJAKAN (Status Bersih/Baru)
+    // KONDISI A: BELUM MENGERJAKAN (Pengguna Baru / Data Reset)
     // -----------------------------------------------------------------
-    // Bersihkan penanda kunci lokal lama jika ada
     localStorage.removeItem(`latihan01_locked_${currentUsername}`);
     localStorage.removeItem(`latihan01_score_${currentUsername}`);
 
-    // Tampilan tombol latihan tetep terbuka / aktif
+    // Buka akses ke modul latihan
     if (cardLatihan01) {
       cardLatihan01.classList.remove("locked");
       cardLatihan01.setAttribute("href", "06Latihan01.html");
@@ -158,7 +166,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       cardLatihan01.innerHTML = `<span>latihan01</span>`;
     }
 
-    // Tampilan di bagian ringkasan hasil latihan
+    // Tampilkan pesan belum mengerjakan
     if (userResultDetail) {
       userResultDetail.innerHTML = `
         <p class="result-text">
@@ -168,13 +176,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   } else {
     // -----------------------------------------------------------------
-    // KONDISI B: SUDAH MENGERJAKAN (Nilai 0, 10, 80, 100, dll)
+    // KONDISI B: SUDAH MENGERJAKAN (Termasuk jika dapat nilai 0 asli)
     // -----------------------------------------------------------------
-    // Simpan sync ke localstorage
-    localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
-    localStorage.setItem(`latihan01_score_${currentUsername}`, scoreFromDb);
+    const finalScore =
+      scoreFromDb !== null && scoreFromDb !== undefined
+        ? scoreFromDb
+        : parseInt(localScoreRaw, 10);
 
-    // Kunci tombol latihan
+    localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
+    localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
+
+    // Kunci modul latihan
     if (cardLatihan01) {
       cardLatihan01.classList.add("locked");
       cardLatihan01.removeAttribute("href");
@@ -190,11 +202,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
     }
 
-    // Tampilkan hasil nilai
+    // Tampilkan nilai pengerjaan
     if (userResultDetail) {
       userResultDetail.innerHTML = `
         <p class="result-text">
-          Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${scoreFromDb}</strong>.
+          Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${finalScore}</strong>.
         </p>
       `;
     }
