@@ -28,6 +28,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const currentUsername = sessionData.username;
+
+  // DOM Elements dasar
+  const greetingText = document.getElementById("greeting-text");
+  const classText = document.getElementById("class-text");
+  const usernameText = document.getElementById("username-text");
+  const userResultDetail = document.getElementById("user-result-detail");
+  const cardLatihan01 = document.getElementById("card-latihan-01");
+
+  const btnLeaderboardTotal = document.getElementById("btn-leaderboard-total");
+  const leaderboardOverlay = document.getElementById(
+    "leaderboard-modal-overlay",
+  );
+  const btnCloseModal = document.getElementById("btn-close-modal");
+  const modalLeaderboardBody = document.getElementById(
+    "modal-leaderboard-body",
+  );
+  const dashboardGradeSelect = document.getElementById(
+    "dashboard-grade-select",
+  );
+
+  if (usernameText) usernameText.textContent = `@${currentUsername}`;
+
   let currentUserData = null;
 
   try {
@@ -50,7 +72,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Ambil data profil & skor dari Supabase
+    // B. Ambil data profil & skor terbaru langsung dari Supabase
     const { data: userData, error: userErr } = await supabase
       .from("users")
       .select("username, full_name, class_name, device_id, score_latihan01")
@@ -69,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     currentUserData = userData;
+    console.log("Data Akun dari Supabase:", currentUserData);
 
     // Ikat device_id jika belum terikat
     if (!currentUserData.device_id) {
@@ -90,31 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ==========================================
-  // 3. DOM ELEMENTS
-  // ==========================================
-  const greetingText = document.getElementById("greeting-text");
-  const classText = document.getElementById("class-text");
-  const usernameText = document.getElementById("username-text");
-
-  const userResultDetail = document.getElementById("user-result-detail");
-  const cardLatihan01 = document.getElementById("card-latihan-01");
-
-  const btnLeaderboardTotal = document.getElementById("btn-leaderboard-total");
-  const leaderboardOverlay = document.getElementById(
-    "leaderboard-modal-overlay",
-  );
-  const btnCloseModal = document.getElementById("btn-close-modal");
-  const modalLeaderboardBody = document.getElementById(
-    "modal-leaderboard-body",
-  );
-  const dashboardGradeSelect = document.getElementById(
-    "dashboard-grade-select",
-  );
-
-  if (usernameText) usernameText.textContent = `@${currentUsername}`;
-
-  // ==========================================
-  // 4. SYNC & TAMPILKAN PROFIL USER
+  // 3. TAMPILKAN PROFIL USER
   // ==========================================
   let userFullName =
     currentUserData?.full_name ||
@@ -135,75 +134,81 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (classText) classText.textContent = `Kelas: ${userClass}`;
 
   // ==========================================
-  // 5. PENANGANAN STATUS LATIHAN (PRIORITAS SUPABASE)
+  // 4. LOGIKA EVALUASI & RENDERING STATUS LATIHAN
   // ==========================================
-  const scoreFromDb = currentUserData ? currentUserData.score_latihan01 : null;
+  function renderLatihanUI(userData) {
+    const scoreFromDb = userData ? userData.score_latihan01 : null;
 
-  // PENENTUAN STATUS AKURAT:
-  // Jika di Supabase NULL -> Berarti BELUM mengerjakan (abaikan cache lokal)
-  const hasFinished = scoreFromDb !== null && scoreFromDb !== undefined;
+    // SYARAT MUTLAK:
+    // Hanya dianggap SELESAI jika score_latihan01 di Supabase BUKAN NULL dan BUKAN UNDEFINED.
+    const isFinished = scoreFromDb !== null && scoreFromDb !== undefined;
 
-  if (!hasFinished) {
-    // -----------------------------------------------------------------
-    // KONDISI A: BELUM MENGERJAKAN (Hapus Cache Palsu / Reset Local)
-    // -----------------------------------------------------------------
-    localStorage.removeItem(`latihan01_locked_${currentUsername}`);
-    localStorage.removeItem(`latihan01_score_${currentUsername}`);
+    if (!isFinished) {
+      // -----------------------------------------------------------------
+      // KONDISI A: BELUM MENGERJAKAN (Siswa Baru / Data Reset)
+      // -----------------------------------------------------------------
+      // Paksa bersihkan cache lokal bekas pengerjaan lama
+      localStorage.removeItem(`latihan01_locked_${currentUsername}`);
+      localStorage.removeItem(`latihan01_score_${currentUsername}`);
 
-    // Buka akses ke modul latihan
-    if (cardLatihan01) {
-      cardLatihan01.classList.remove("locked");
-      cardLatihan01.setAttribute("href", "06Latihan01.html");
-      cardLatihan01.removeAttribute("aria-disabled");
-      cardLatihan01.removeAttribute("title");
-      cardLatihan01.innerHTML = `<span>latihan01</span>`;
-    }
+      // Buka modul latihan agar bisa diklik
+      if (cardLatihan01) {
+        cardLatihan01.classList.remove("locked");
+        cardLatihan01.setAttribute("href", "06Latihan01.html");
+        cardLatihan01.removeAttribute("aria-disabled");
+        cardLatihan01.removeAttribute("title");
+        cardLatihan01.innerHTML = `<span>latihan01</span>`;
+      }
 
-    // Tampilkan pesan belum mengerjakan
-    if (userResultDetail) {
-      userResultDetail.innerHTML = `
-        <p class="result-text">
-          Ananda <strong>${userFullName}</strong> belum mengerjakan <strong>latihan01</strong>. Silakan klik modul latihan di atas untuk mulai mengerjakan.
-        </p>
-      `;
-    }
-  } else {
-    // -----------------------------------------------------------------
-    // KONDISI B: SUDAH MENGERJAKAN (Nilai Murni dari Database)
-    // -----------------------------------------------------------------
-    const finalScore = scoreFromDb;
+      // Tampilkan keterangan belum mengerjakan
+      if (userResultDetail) {
+        userResultDetail.innerHTML = `
+          <p class="result-text">
+            Ananda <strong>${userFullName}</strong> belum mengerjakan <strong>latihan01</strong>. Silakan klik modul latihan di atas untuk mulai mengerjakan.
+          </p>
+        `;
+      }
+    } else {
+      // -----------------------------------------------------------------
+      // KONDISI B: SUDAH MENGERJAKAN (Ada Nilai di Database)
+      // -----------------------------------------------------------------
+      const finalScore = scoreFromDb;
 
-    localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
-    localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
+      localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
+      localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
 
-    // Kunci modul latihan
-    if (cardLatihan01) {
-      cardLatihan01.classList.add("locked");
-      cardLatihan01.removeAttribute("href");
-      cardLatihan01.setAttribute("aria-disabled", "true");
-      cardLatihan01.setAttribute("title", "Sudah Dikerjakan (Terkunci)");
+      // Kunci modul latihan
+      if (cardLatihan01) {
+        cardLatihan01.classList.add("locked");
+        cardLatihan01.removeAttribute("href");
+        cardLatihan01.setAttribute("aria-disabled", "true");
+        cardLatihan01.setAttribute("title", "Sudah Dikerjakan (Terkunci)");
 
-      cardLatihan01.innerHTML = `
-        <div class="stamp-badge">SELESAI</div>
-        <svg class="locked-icon" viewBox="0 0 24 24">
-          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-        </svg>
-        <span>latihan01</span>
-      `;
-    }
+        cardLatihan01.innerHTML = `
+          <div class="stamp-badge">SELESAI</div>
+          <svg class="locked-icon" viewBox="0 0 24 24">
+            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+          </svg>
+          <span>latihan01</span>
+        `;
+      }
 
-    // Tampilkan nilai pengerjaan
-    if (userResultDetail) {
-      userResultDetail.innerHTML = `
-        <p class="result-text">
-          Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${finalScore}</strong>.
-        </p>
-      `;
+      // Tampilkan nilai pengerjaan
+      if (userResultDetail) {
+        userResultDetail.innerHTML = `
+          <p class="result-text">
+            Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${finalScore}</strong>.
+          </p>
+        `;
+      }
     }
   }
 
+  // Jalankan fungsi update UI setelah data Supabase didapat
+  renderLatihanUI(currentUserData);
+
   // ==========================================
-  // 6. FETCH & RENDER LEADERBOARD REAL-TIME
+  // 5. FETCH & RENDER LEADERBOARD REAL-TIME
   // ==========================================
   let cachedLeaderboardData = [];
 
@@ -212,7 +217,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalLeaderboardBody.innerHTML = `<p class="loading-text">Memuat data peringkat...</p>`;
 
     try {
-      // Ambil pengguna yang sudah memiliki skor
       const { data, error } = await supabase
         .from("users")
         .select("username, class_name, grade, score_latihan01")
@@ -300,7 +304,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalLeaderboardBody.innerHTML = tableHTML;
   }
 
-  // Event Listeners Leaderboard Modal
+  // Event Listeners Modal Leaderboard
   if (btnLeaderboardTotal) {
     btnLeaderboardTotal.addEventListener("click", () => {
       if (leaderboardOverlay) {
