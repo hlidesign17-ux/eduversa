@@ -98,25 +98,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const calculatedGrade = parseInt(inputClass, 10) || 4;
 
-      // C. MENYUSUN DATA USER DARI INPUT LOGIN
-      const userDataToSave = {
-        username: inputUsername,
-        device_id: deviceId,
-        is_used: true,
-        full_name: inputFullName,
-        class_name: inputClass,
-        grade: calculatedGrade,
-      };
-
-      // D. EKSEKUSI UPSERT KE SUPABASE
-      const { error: upsertErr } = await supabase
+      // C. CEK EXISTENSI AKUN DI DATABASE SUPABASE
+      const { data: existingUser } = await supabase
         .from("users")
-        .upsert(userDataToSave, { onConflict: "username" });
+        .select("username")
+        .eq("username", inputUsername)
+        .maybeSingle();
 
-      if (upsertErr) {
-        console.error("Gagal simpan user ke Supabase:", upsertErr);
-        alert("Gagal melakukan autentikasi ke server. Coba lagi.");
-        return;
+      if (existingUser) {
+        // D1. JIKA AKUN SUDAH ADA -> UPDATE PROFIL SAJA (TANPA MENYENTUH/MERESET SKOR LATIHAN)
+        const { error: updateErr } = await supabase
+          .from("users")
+          .update({
+            device_id: deviceId,
+            is_used: true,
+            full_name: inputFullName,
+            class_name: inputClass,
+            grade: calculatedGrade,
+          })
+          .eq("username", inputUsername);
+
+        if (updateErr) {
+          console.error("Gagal update profil user ke Supabase:", updateErr);
+          alert("Gagal melakukan autentikasi ke server. Coba lagi.");
+          return;
+        }
+      } else {
+        // D2. JIKA AKUN BARU -> INSERT AKUN BARU (MENGGUNAKAN DEFAULT NULL PADA SCORE)
+        const { error: insertErr } = await supabase.from("users").insert({
+          username: inputUsername,
+          device_id: deviceId,
+          is_used: true,
+          full_name: inputFullName,
+          class_name: inputClass,
+          grade: calculatedGrade,
+        });
+
+        if (insertErr) {
+          console.error("Gagal membuat user baru di Supabase:", insertErr);
+          alert("Gagal melakukan registrasi akun baru ke server. Coba lagi.");
+          return;
+        }
       }
 
       // E. BERSIHKAN SESI LAMA & SIMPAN SESI BARU
