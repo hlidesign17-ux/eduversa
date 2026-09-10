@@ -1,5 +1,3 @@
-<!-- Markup Layer 1, Layer 2, & 3 Section -->
-
 <!doctype html>
 <html lang="id">
   <head>
@@ -16,80 +14,7 @@
     <link rel="stylesheet" href="css/edualfalah.css" />
   </head>
   <body>
-    <!-- LAYER 1: POP-UP MODAL ONBOARDING -->
-    <div
-      id="onboarding-modal"
-      class="modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-heading"
-    >
-      <div class="modal-card">
-        <div class="modal-header-container">
-          <div class="modal-icon-badge">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          <h2 id="modal-heading" class="modal-title">Lengkapi Data Diri</h2>
-          <p class="modal-subtitle">
-            Isi nama dan kelas ananda untuk memulai pembelajaran
-          </p>
-        </div>
-
-        <form id="onboarding-form" class="auth-form">
-          <div class="form-group">
-            <label for="full-name-input" class="form-label">Nama Lengkap</label>
-            <input
-              type="text"
-              id="full-name-input"
-              class="form-input"
-              placeholder="Masukkan nama lengkap"
-              required
-              autocomplete="name"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="class-select" class="form-label">Pilih Kelas</label>
-            <select id="class-select" class="form-input form-select" required>
-              <option value="" disabled selected>-- Pilih Kelas --</option>
-              <option value="4A">4A</option>
-              <option value="4B">4B</option>
-              <option value="4C">4C</option>
-              <option value="4D">4D</option>
-              <option value="5A">5A</option>
-              <option value="5B">5B</option>
-              <option value="5C">5C</option>
-              <option value="5D">5D</option>
-              <option value="6A">6A</option>
-              <option value="6B">6B</option>
-              <option value="6C">6C</option>
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            class="btn-primary"
-            style="margin-top: var(--space-4)"
-          >
-            Data Sudah Benar
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <!-- MAIN LAYER / LAYER 2 -->
+    <!-- MAIN LAYER -->
     <main class="dashboard-container">
       <!-- HEADER / USER INFO -->
       <header class="user-profile-header">
@@ -238,7 +163,6 @@
     </main>
 
     <script type="module" src="js/edualfalah.js"></script>
-    <!-- Panggil di halaman yang butuh proteksi back button -->
     <script src="js/prevent-back.js"></script>
   </body>
 </html>

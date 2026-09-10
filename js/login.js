@@ -7,8 +7,35 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector(".auth-form");
   const usernameInput = document.getElementById("username-03");
   const passwordInput = document.getElementById("password-03");
+  const fullnameInput = document.getElementById("fullname-03");
+  const classSelect = document.getElementById("class-select-03");
 
   if (!loginForm) return;
+
+  // Auto-fill Nama Lengkap & Kelas dari Supabase/Cache ketika username diisi
+  if (usernameInput) {
+    usernameInput.addEventListener("blur", async () => {
+      const inputUsername = usernameInput.value.trim().toLowerCase();
+      if (!inputUsername) return;
+
+      try {
+        const { data: userDb } = await supabase
+          .from("users")
+          .select("full_name, class_name")
+          .eq("username", inputUsername)
+          .maybeSingle();
+
+        if (userDb) {
+          if (fullnameInput && userDb.full_name)
+            fullnameInput.value = userDb.full_name;
+          if (classSelect && userDb.class_name)
+            classSelect.value = userDb.class_name;
+        }
+      } catch (err) {
+        console.error("Gagal auto-fill data user:", err);
+      }
+    });
+  }
 
   // ==========================================
   // 1. MANAJEMEN DEVICE ID UNIK
@@ -32,6 +59,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const inputUsername = usernameInput.value.trim().toLowerCase();
     const inputPassword = passwordInput.value.trim();
+    const inputFullName = fullnameInput ? fullnameInput.value.trim() : "";
+    const inputClass = classSelect ? classSelect.value : "";
+
+    if (!inputFullName || !inputClass) {
+      alert("Harap lengkapi Nama Lengkap dan Kelas!");
+      return;
+    }
 
     // A. Validasi Kredensial Lokal (MOCK_USERS)
     const foundUser = MOCK_USERS.find(
@@ -62,40 +96,19 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // C. CEK DATA EKSISTING DI SUPABASE
-      const { data: existingUser, error: userErr } = await supabase
-        .from("users")
-        .select("username, full_name, class_name, grade, device_id")
-        .eq("username", inputUsername)
-        .maybeSingle();
+      const calculatedGrade = parseInt(inputClass, 10) || 4;
 
-      if (userErr) console.error("Supabase User Check Error:", userErr);
-
-      const calculatedGrade =
-        parseInt(foundUser.grade, 10) || parseInt(foundUser.className, 10) || 4;
-
-      // D. MENYUSUN DATA USER
+      // C. MENYUSUN DATA USER DARI INPUT LOGIN
       const userDataToSave = {
         username: inputUsername,
         device_id: deviceId,
         is_used: true,
-        full_name:
-          existingUser &&
-          existingUser.full_name &&
-          existingUser.full_name !== inputUsername
-            ? existingUser.full_name
-            : foundUser.fullname || "",
-        class_name:
-          existingUser && existingUser.class_name
-            ? existingUser.class_name
-            : foundUser.className || "",
-        grade:
-          existingUser && existingUser.grade
-            ? existingUser.grade
-            : calculatedGrade,
+        full_name: inputFullName,
+        class_name: inputClass,
+        grade: calculatedGrade,
       };
 
-      // E. EKSEKUSI UPSERT KE SUPABASE DENGAN AWAIT
+      // D. EKSEKUSI UPSERT KE SUPABASE
       const { error: upsertErr } = await supabase
         .from("users")
         .upsert(userDataToSave, { onConflict: "username" });
@@ -106,25 +119,25 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // F. BERSIHKAN SESI LAMA SECARA SELEKTIF (JANGAN REMOVE KUNCI LATIHAN & SKOR)
+      // E. BERSIHKAN SESI LAMA & SIMPAN SESI BARU
       localStorage.removeItem("edualfalah_session");
-      localStorage.removeItem("edualfalah_fullname");
-      localStorage.removeItem("edualfalah_class");
 
       localStorage.setItem("edualfalah_device_owner", inputUsername);
+      localStorage.setItem("edualfalah_fullname", inputFullName);
+      localStorage.setItem("edualfalah_class", inputClass);
 
-      // Simpan Sesi Baru
       localStorage.setItem(
         "edualfalah_session",
         JSON.stringify({
           username: foundUser.username,
-          className: userDataToSave.class_name,
-          grade: userDataToSave.grade,
+          fullName: inputFullName,
+          className: inputClass,
+          grade: calculatedGrade,
           isLoggedIn: true,
         }),
       );
 
-      // G. REDIRECT DENGAN JEDA SINGKAT
+      // F. REDIRECT DENGAN JEDA SINGKAT
       setTimeout(() => {
         window.location.href = "05edualfalah2.html";
       }, 100);

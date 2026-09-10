@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Cek ketersediaan akun saat ini di Supabase (Dengan Toleransi Sync)
+    // B. Cek ketersediaan akun saat ini di Supabase
     let { data: currentUserData, error: userErr } = await supabase
       .from("users")
       .select("username, device_id")
@@ -57,30 +57,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (userErr) console.error("Error cek user aktif:", userErr);
 
-    // JIKA DATA BELUM MASUK / SINKRONISASI TERLAMBAT -> LAKUKAN AUTO-REGISTER DARURAT
-    // Menggunakan string kosong "" agar tidak melanggar NOT NULL constraint Supabase
     if (!currentUserData) {
-      const { error: insertErr } = await supabase.from("users").upsert(
-        {
-          username: currentUsername,
-          full_name: "",
-          class_name: "",
-          device_id: deviceId,
-          is_used: true,
-        },
-        { onConflict: "username" },
-      );
-
-      if (insertErr) {
-        alert(
-          "Akun telah dihapus dari server. Perangkat ini sekarang bebas digunakan untuk akun lain.",
-        );
-        clearLocalSessionExceptDevice();
-        window.location.href = "02LoginPage.html";
-        return;
-      }
+      alert("Akun tidak ditemukan atau telah dihapus dari server.");
+      clearLocalSessionExceptDevice();
+      window.location.href = "02LoginPage.html";
+      return;
     } else if (!currentUserData.device_id) {
-      // C. Ikatkan device_id jika belum terikat di Supabase
+      // Ikatkan device_id jika belum terikat di Supabase
       await supabase
         .from("users")
         .update({ device_id: deviceId })
@@ -101,11 +84,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================================
   // 3. DOM ELEMENTS
   // ==========================================
-  const onboardingModal = document.getElementById("onboarding-modal");
-  const onboardingForm = document.getElementById("onboarding-form");
-  const fullNameInput = document.getElementById("full-name-input");
-  const classSelect = document.getElementById("class-select");
-
   const greetingText = document.getElementById("greeting-text");
   const classText = document.getElementById("class-text");
   const usernameText = document.getElementById("username-text");
@@ -128,8 +106,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (usernameText) usernameText.textContent = `@${currentUsername}`;
 
   // ==========================================
-  // 4. VERIFIKASI NAMA LENGKAP PADA SUPABASE
+  // 4. SYNC & TAMPILKAN PROFIL USER
   // ==========================================
+  let userFullName =
+    localStorage.getItem("edualfalah_fullname") || currentUsername;
+  let userClass = localStorage.getItem("edualfalah_class") || "-";
+
   try {
     const { data: profileData } = await supabase
       .from("users")
@@ -137,39 +119,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       .eq("username", currentUsername)
       .maybeSingle();
 
-    // Validasi: Jika full_name KOSONG (""), SAMA DENGAN USERNAME, atau belum set KELAS
-    // Maka TAMPILKAN POP-UP ONBOARDING untuk meminta Nama Lengkap Asli
-    const needsOnboarding =
-      !profileData ||
-      !profileData.full_name ||
-      profileData.full_name.trim() === "" ||
-      profileData.full_name === currentUsername ||
-      !profileData.class_name ||
-      profileData.class_name.trim() === "";
-
-    if (!needsOnboarding) {
-      // Jika data sudah lengkap & valid
-      if (onboardingModal) onboardingModal.classList.add("hidden");
-
-      if (greetingText)
-        greetingText.textContent = `Assalamualaikum, ${profileData.full_name}`;
-      if (classText) classText.textContent = `Kelas: ${profileData.class_name}`;
-
-      localStorage.setItem("edualfalah_fullname", profileData.full_name);
-      localStorage.setItem("edualfalah_class", profileData.class_name);
-
-      renderUserSummary(currentUsername, profileData.full_name);
-    } else {
-      // Jika belum diisi dengan benar -> TAMPILKAN POP-UP ONBOARDING
-      if (onboardingModal) onboardingModal.classList.remove("hidden");
+    if (profileData) {
+      if (profileData.full_name) {
+        userFullName = profileData.full_name;
+        localStorage.setItem("edualfalah_fullname", userFullName);
+      }
+      if (profileData.class_name) {
+        userClass = profileData.class_name;
+        localStorage.setItem("edualfalah_class", userClass);
+      }
     }
   } catch (err) {
-    console.error("Gagal sinkronisasi profil Supabase:", err);
-    if (onboardingModal) onboardingModal.classList.remove("hidden");
+    console.error("Gagal ambil profil Supabase:", err);
   }
 
+  if (greetingText)
+    greetingText.textContent = `Assalamualaikum, ${userFullName}`;
+  if (classText) classText.textContent = `Kelas: ${userClass}`;
+
+  renderUserSummary(currentUsername, userFullName);
+
   // ==========================================
-  // 5. CEK PENGUNCIAN CARD LATIHAN 01 (STEMPEL SELESAI)
+  // 5. CEK PENGUNCIAN CARD LATIHAN 01
   // ==========================================
   const isLatihanLocked =
     localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
@@ -189,60 +160,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  // ==========================================
-  // 6. FORM SUBMIT ONBOARDING (UPDATE NAMA ASLI KE SUPABASE)
-  // ==========================================
-  if (onboardingForm) {
-    onboardingForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const fullName = fullNameInput.value.trim();
-      const selectedClass = classSelect.value;
-
-      if (!fullName || !selectedClass) {
-        alert("Harap isi Nama Lengkap dan pilih Kelas!");
-        return;
-      }
-
-      const calculatedGrade = parseInt(selectedClass, 10) || 4;
-
-      try {
-        // Update Nama Lengkap Asli dan Kelas ke Supabase
-        const { error } = await supabase
-          .from("users")
-          .update({
-            full_name: fullName,
-            class_name: selectedClass,
-            grade: calculatedGrade,
-            device_id: deviceId,
-            is_used: true,
-          })
-          .eq("username", currentUsername);
-
-        if (error) {
-          console.error("Gagal menyimpan profil ke Supabase:", error);
-          alert("Gagal menyimpan profil ke server. Periksa koneksi Anda.");
-          return;
-        }
-
-        // Simpan ke Cache Lokal
-        localStorage.setItem("edualfalah_fullname", fullName);
-        localStorage.setItem("edualfalah_class", selectedClass);
-
-        if (greetingText)
-          greetingText.textContent = `Assalamualaikum, ${fullName}`;
-        if (classText) classText.textContent = `Kelas: ${selectedClass}`;
-
-        // Sembunyikan Modal setelah berhasil disimpan
-        if (onboardingModal) onboardingModal.classList.add("hidden");
-        renderUserSummary(currentUsername, fullName);
-      } catch (err) {
-        console.error("Error:", err);
-        alert("Terjadi kesalahan sistem saat memproses profil.");
-      }
-    });
-  }
-
   function renderUserSummary(username, fullName) {
     const savedScore =
       parseInt(localStorage.getItem(`latihan01_score_${username}`), 10) || 0;
@@ -257,7 +174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ==========================================
-  // 7. FETCH & RENDER LEADERBOARD REAL-TIME
+  // 6. FETCH & RENDER LEADERBOARD REAL-TIME
   // ==========================================
   let cachedLeaderboardData = [];
 
