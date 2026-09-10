@@ -11,16 +11,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const { data: userDb } = await supabase
       .from("users")
-      .select("score_latihan01")
+      .select("is_latihan01_submitted")
       .eq("username", currentUsername)
       .maybeSingle();
 
-    const dbScore = userDb ? userDb.score_latihan01 : null;
+    const isSubmittedDb = userDb
+      ? Boolean(userDb.is_latihan01_submitted)
+      : false;
     const localLocked =
       localStorage.getItem(`latihan01_locked_${currentUsername}`) === "true";
 
-    // Jika sudah pernah ada nilai di Supabase atau Local Storage sudah terkunci
-    if ((dbScore !== null && dbScore !== undefined) || localLocked) {
+    // Jika di database sudah ditandai true atau di Local Storage sudah terkunci
+    if (isSubmittedDb || localLocked) {
       alert("Anda sudah menyelesaikan latihan ini. Latihan telah terkunci.");
       window.location.href = "05edualfalah2.html";
       return;
@@ -145,11 +147,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
     localStorage.setItem("materi01_completed", "true");
 
-    // 2. Simpan ke Supabase
+    // 2. Simpan Nilai DAN Status Submisi ke Supabase
     try {
       await supabase
         .from("users")
-        .update({ score_latihan01: finalScore })
+        .update({
+          score_latihan01: finalScore,
+          is_latihan01_submitted: true, // Kunci status pengerjaan secara permanen
+        })
         .eq("username", currentUsername);
     } catch (err) {
       console.error("Gagal update nilai ke server:", err);

@@ -72,10 +72,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // B. Ambil data profil & skor terbaru langsung dari Supabase
+    // B. Ambil data profil, skor, dan status submission dari Supabase
     const { data: userData, error: userErr } = await supabase
       .from("users")
-      .select("username, full_name, class_name, device_id, score_latihan01")
+      .select(
+        "username, full_name, class_name, device_id, score_latihan01, is_latihan01_submitted",
+      )
       .eq("username", currentUsername)
       .maybeSingle();
 
@@ -91,7 +93,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     currentUserData = userData;
-    console.log("Data Akun dari Supabase:", currentUserData);
 
     // Ikat device_id jika belum terikat
     if (!currentUserData.device_id) {
@@ -137,21 +138,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 4. LOGIKA EVALUASI & RENDERING STATUS LATIHAN
   // ==========================================
   function renderLatihanUI(userData) {
-    const scoreFromDb = userData ? userData.score_latihan01 : null;
+    // Kunci utama: Cek status pengerjaan via boolean flag
+    const isSubmitted = userData
+      ? Boolean(userData.is_latihan01_submitted)
+      : false;
+    const scoreFromDb =
+      userData && userData.score_latihan01 !== null
+        ? userData.score_latihan01
+        : 0;
 
-    // SYARAT MUTLAK:
-    // Hanya dianggap SELESAI jika score_latihan01 di Supabase BUKAN NULL dan BUKAN UNDEFINED.
-    const isFinished = scoreFromDb !== null && scoreFromDb !== undefined;
-
-    if (!isFinished) {
+    if (!isSubmitted) {
       // -----------------------------------------------------------------
-      // KONDISI A: BELUM MENGERJAKAN (Siswa Baru / Data Reset)
+      // KONDISI A: BELUM MENGERJAKAN (Flag is_latihan01_submitted = false)
       // -----------------------------------------------------------------
-      // Paksa bersihkan cache lokal bekas pengerjaan lama
       localStorage.removeItem(`latihan01_locked_${currentUsername}`);
       localStorage.removeItem(`latihan01_score_${currentUsername}`);
 
-      // Buka modul latihan agar bisa diklik
       if (cardLatihan01) {
         cardLatihan01.classList.remove("locked");
         cardLatihan01.setAttribute("href", "06Latihan01.html");
@@ -160,7 +162,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         cardLatihan01.innerHTML = `<span>latihan01</span>`;
       }
 
-      // Tampilkan keterangan belum mengerjakan
       if (userResultDetail) {
         userResultDetail.innerHTML = `
           <p class="result-text">
@@ -170,14 +171,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } else {
       // -----------------------------------------------------------------
-      // KONDISI B: SUDAH MENGERJAKAN (Ada Nilai di Database)
+      // KONDISI B: SUDAH MENGERJAKAN (Flag is_latihan01_submitted = true)
       // -----------------------------------------------------------------
-      const finalScore = scoreFromDb;
-
       localStorage.setItem(`latihan01_locked_${currentUsername}`, "true");
-      localStorage.setItem(`latihan01_score_${currentUsername}`, finalScore);
+      localStorage.setItem(`latihan01_score_${currentUsername}`, scoreFromDb);
 
-      // Kunci modul latihan
       if (cardLatihan01) {
         cardLatihan01.classList.add("locked");
         cardLatihan01.removeAttribute("href");
@@ -193,18 +191,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
       }
 
-      // Tampilkan nilai pengerjaan
       if (userResultDetail) {
         userResultDetail.innerHTML = `
           <p class="result-text">
-            Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${finalScore}</strong>.
+            Ananda <strong>${userFullName}</strong> (<code>@${currentUsername}</code>) telah menyelesaikan <strong>latihan01</strong> dengan memperoleh nilai <strong>${scoreFromDb}</strong>.
           </p>
         `;
       }
     }
   }
 
-  // Jalankan fungsi update UI setelah data Supabase didapat
+  // Render UI
   renderLatihanUI(currentUserData);
 
   // ==========================================
@@ -220,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const { data, error } = await supabase
         .from("users")
         .select("username, class_name, grade, score_latihan01")
-        .not("score_latihan01", "is", null)
+        .eq("is_latihan01_submitted", true)
         .order("score_latihan01", { ascending: false });
 
       if (error) throw error;
@@ -304,7 +301,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalLeaderboardBody.innerHTML = tableHTML;
   }
 
-  // Event Listeners Modal Leaderboard
+  // Event Listeners Leaderboard
   if (btnLeaderboardTotal) {
     btnLeaderboardTotal.addEventListener("click", () => {
       if (leaderboardOverlay) {
