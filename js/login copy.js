@@ -15,9 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Auto-fill & Lock Nama Lengkap & Kelas dari Supabase ketika username diisi
   if (usernameInput) {
     usernameInput.addEventListener("blur", async () => {
-      const inputUsername = usernameInput.value
-        ? usernameInput.value.trim().toLowerCase()
-        : "";
+      const inputUsername = usernameInput.value.trim().toLowerCase();
       if (!inputUsername) return;
 
       try {
@@ -66,25 +64,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. EVENT LISTENER SUBMIT LOGIN
   // ==========================================
   loginForm.addEventListener("submit", async (e) => {
-    // PROTEKSI UTAMA DARI ERROR 405 PADA SAFARI / IPHONE
     e.preventDefault();
-    e.stopImmediatePropagation();
 
-    const inputUsername =
-      usernameInput && usernameInput.value
-        ? usernameInput.value.trim().toLowerCase()
-        : "";
-    const inputPassword =
-      passwordInput && passwordInput.value ? passwordInput.value.trim() : "";
-    const inputFullName =
-      fullnameInput && fullnameInput.value ? fullnameInput.value.trim() : "";
-    const inputClass =
-      classSelect && classSelect.value ? classSelect.value : "";
-
-    if (!inputUsername || !inputPassword) {
-      alert("Harap isi Username dan Password Anda!");
-      return;
-    }
+    const inputUsername = usernameInput.value.trim().toLowerCase();
+    const inputPassword = passwordInput.value.trim();
+    const inputFullName = fullnameInput ? fullnameInput.value.trim() : "";
+    const inputClass = classSelect ? classSelect.value : "";
 
     // A. Validasi Kredensial Lokal (MOCK_USERS)
     const foundUser = MOCK_USERS.find(
