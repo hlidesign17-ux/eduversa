@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderQuestions();
 
   // 4. Timer Countdown Safe Guard
-  let timeInSeconds = 15 * 60; // 15 Menit
+  let timeInSeconds = 25 * 60; // 15 Menit
   let timerInterval = null;
 
   if (timerDisplay) {
