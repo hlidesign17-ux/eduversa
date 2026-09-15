@@ -99,3 +99,9 @@
 .btn-understand:active {
   transform: translateY(0);
 }
+
+.materi-video-wrapper video {
+  width: 100%;
+  height: auto;
+  border-radius: 8px; /* Opsional, agar sudut tumpul */
+}
