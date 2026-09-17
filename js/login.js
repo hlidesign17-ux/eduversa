@@ -28,7 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
           .maybeSingle();
 
         if (userDb) {
-          // JIKA USER SUDAH ADA: Isikan data asli dan KUNCI input agar tidak bisa diganti
           if (fullnameInput && userDb.full_name) {
             fullnameInput.value = userDb.full_name;
             fullnameInput.disabled = true;
@@ -38,7 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
             classSelect.disabled = true;
           }
         } else {
-          // JIKA USER BARU: Buka kunci input agar bisa diisi
           if (fullnameInput) fullnameInput.disabled = false;
           if (classSelect) classSelect.disabled = false;
         }
@@ -66,7 +64,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. EVENT LISTENER SUBMIT LOGIN
   // ==========================================
   loginForm.addEventListener("submit", async (e) => {
-    // PROTEKSI UTAMA DARI ERROR 405 PADA SAFARI / IPHONE
     e.preventDefault();
     e.stopImmediatePropagation();
 
@@ -98,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // B. CEK PENGUNCIAN PERANGKAT DARI SUPABASE
+      // B. CEK ATURAN 1: Apakah perangkat ini sudah terikat ke USER LAIN?
       const { data: boundUser, error: boundErr } = await supabase
         .from("users")
         .select("username")
@@ -119,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const { data: existingUser } = await supabase
         .from("users")
         .select(
-          "username, full_name, class_name, grade, score_latihan01, is_latihan01_submitted",
+          "username, device_id, full_name, class_name, grade, score_latihan01, is_latihan01_submitted",
         )
         .eq("username", inputUsername)
         .maybeSingle();
@@ -129,12 +126,19 @@ document.addEventListener("DOMContentLoaded", () => {
       let finalGrade = 4;
 
       if (existingUser) {
-        // D1. JIKA AKUN SUDAH ADA -> GUNAKAN DATA ASLI DARI SUPABASE (Abaikan inputan baru jika ada)
+        // D1. CEK ATURAN 2 (PERBAIKAN CELAH): Apakah AKUN INI sudah terikat ke PERANGKAT LAIN?
+        if (existingUser.device_id && existingUser.device_id !== deviceId) {
+          alert(
+            `AKSES DITOLAK!\nAkun @${inputUsername} sudah terdaftar dan dikunci pada perangkat lain.\nAnda tidak dapat login menggunakan HP/Komputer yang berbeda.`,
+          );
+          return;
+        }
+
         finalFullName = existingUser.full_name;
         finalClass = existingUser.class_name;
         finalGrade = existingUser.grade || parseInt(finalClass, 10) || 4;
 
-        // Cukup update device_id dan status aktif
+        // Update device_id hanya jika belum terikat sebelumnya
         const { error: updateErr } = await supabase
           .from("users")
           .update({
@@ -199,7 +203,6 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem(`latihan01_locked_${inputUsername}`, "true");
         localStorage.setItem(`latihan01_score_${inputUsername}`, userScore);
       } else {
-        // Jika belum mengerjakan, hapus cache status latihan
         localStorage.removeItem(`latihan01_locked_${inputUsername}`);
         localStorage.removeItem(`latihan01_score_${inputUsername}`);
       }
